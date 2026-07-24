@@ -1,5 +1,5 @@
 // =================================================================
-// FRONTEND APP.JS - MANADA PATITAS PWA (INTEGRADO COMPLETO)
+// FRONTEND APP.JS - MANADA PATITAS PWA
 // =================================================================
 
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAAyuqBHUON3C17OW4SLbeRxoutLyYneHcFGfQ_Q4OqwoGBCRESrcF/exec"; 
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // -----------------------------------------------------------------
-// AUTENTICACIÓN Y ROLES
+// AUTENTICACIÓN
 // -----------------------------------------------------------------
 function inicializarAutenticacion() {
   const formLogin = document.getElementById('form-login');
@@ -62,7 +62,7 @@ function procesarLogin() {
       cambiarPestana(rolInfo.pestanaDefault);
     });
   } else {
-    alert("⚠️ PIN incorrecto. Revisa el PIN e intenta nuevamente.");
+    alert("⚠️ PIN incorrecto.");
     if (inputPin) {
       inputPin.value = '';
       inputPin.focus();
@@ -89,10 +89,10 @@ function cerrarSesion() {
 }
 
 function cambiarPinAcceso() {
-  const nuevoPin = prompt("Ingresa tu nuevo PIN de acceso:");
+  const nuevoPin = prompt("Ingresa tu nuevo PIN:");
   if (nuevoPin && usuarioActual) {
     CONFIG_ROLES[usuarioActual.rol].pin = nuevoPin.trim();
-    alert("✅ PIN actualizado con éxito para esta sesión.");
+    alert("✅ PIN actualizado.");
   }
 }
 
@@ -142,7 +142,7 @@ function configurarFechaPorDefecto() {
 }
 
 // -----------------------------------------------------------------
-// BACKEND GOOGLE SHEETS
+// BACKEND
 // -----------------------------------------------------------------
 async function cargarDatosBackend() {
   try {
@@ -155,7 +155,7 @@ async function cargarDatosBackend() {
     try {
       data = JSON.parse(textoRespuesta);
     } catch (e) {
-      console.error("Respuesta no válida del servidor:", textoRespuesta);
+      console.error("Respuesta no válida:", textoRespuesta);
       return;
     }
 
@@ -170,7 +170,7 @@ async function cargarDatosBackend() {
     renderizarTablaInventario();
     renderizarPOS();
   } catch (err) {
-    console.error("Error cargando datos del backend:", err);
+    console.error("Error cargando datos:", err);
   }
 }
 
@@ -202,7 +202,7 @@ function formatearInputRut(input) {
 }
 
 // -----------------------------------------------------------------
-// COMBOS DE TUTORES EN TODAS LAS SECCIONES
+// TUTORES COMBO
 // -----------------------------------------------------------------
 function poblarCombosTutores() {
   const selectsTutor = [
@@ -254,14 +254,6 @@ function actualizarMascotasAgenda() {
 
 function normalizarFechaHoraCita(rawStr) {
   if (!rawStr) return "";
-  if (rawStr instanceof Date) {
-    const yyyy = rawStr.getFullYear();
-    const mm = String(rawStr.getMonth() + 1).padStart(2, '0');
-    const dd = String(rawStr.getDate()).padStart(2, '0');
-    const hh = String(rawStr.getHours()).padStart(2, '0');
-    const min = String(rawStr.getMinutes()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
-  }
   let s = rawStr.toString().trim();
   if (s.includes('T')) {
     const partes = s.split('T');
@@ -296,9 +288,7 @@ function renderizarParrillaAgenda() {
 
     if (cita) {
       div.className = 'bloque-hora ocupado';
-      const nomMascota = cita.mascota || 'Reservado';
-      const nomServicio = cita.servicio || 'Atención';
-      div.innerHTML = `<div class="hora-titulo">🕒 ${hora}</div><div class="info-cita"><strong>🐾 ${nomMascota}</strong><br><small>${nomServicio}</small></div>`;
+      div.innerHTML = `<div class="hora-titulo">🕒 ${hora}</div><div class="info-cita"><strong>🐾 ${cita.mascota || 'Reservado'}</strong><br><small>${cita.servicio || 'Atención'}</small></div>`;
     } else if (esPasado) {
       div.className = 'bloque-hora pasado';
       div.innerHTML = `<div class="hora-titulo">🕒 ${hora}</div><div class="info-cita">⛔ Pasado</div>`;
@@ -326,7 +316,7 @@ async function guardarCita(e) {
   const fechaInput = document.getElementById('agenda-fecha').value;
 
   if (!selectTutor.value || !selectMascota.value || !fechaInput) {
-    alert("Por favor completa los datos de la cita y elige un horario.");
+    alert("Completa todos los campos de la cita.");
     return;
   }
 
@@ -344,12 +334,12 @@ async function guardarCita(e) {
     actualizarMascotasAgenda();
     await cargarDatosBackend();
   } catch (err) {
-    alert('⚠️ No se pudo reservar: ' + err.message);
+    alert('Error al reservar: ' + err.message);
   }
 }
 
 // -----------------------------------------------------------------
-// TUTORES
+// TUTORES Y PACIENTES
 // -----------------------------------------------------------------
 async function guardarTutor(e) {
   if (e) e.preventDefault();
@@ -365,11 +355,11 @@ async function guardarTutor(e) {
 
   try {
     await enviarFormularioBackend('guardarTutor', payload);
-    alert('🐾 Paciente y Tutor guardados con éxito.');
+    alert('🐾 Tutor registrado.');
     document.getElementById('form-tutor').reset();
     await cargarDatosBackend();
   } catch (err) {
-    alert('Error al guardar tutor: ' + err.message);
+    alert('Error: ' + err.message);
   }
 }
 
@@ -436,7 +426,7 @@ function renderizarHistorialClinicoPaciente(rutTutor, nombreMascota) {
   });
 
   if (atencionesMascota.length === 0) {
-    contenedor.innerHTML = '<p style="color:#777;">Este paciente no registra consultas médicas anteriores.</p>';
+    contenedor.innerHTML = '<p style="color:#777;">Sin consultas médicas registradas.</p>';
     return;
   }
 
@@ -447,7 +437,7 @@ function renderizarHistorialClinicoPaciente(rutTutor, nombreMascota) {
       <div style="font-size:0.85rem; color:#666;">📅 ${c.fecha || '-'} | 🐾 <strong>${c.mascota || nombreMascota}</strong></div>
       <div><strong>🌡️ Temp:</strong> ${c.temperatura || '-'} °C | <strong>⚖️ Peso:</strong> ${c.peso || '-'} kg</div>
       <div><strong>🩺 Diagnóstico:</strong> ${c.diagnostico || '-'}</div>
-      <div><strong>💊 Tratamiento / Receta:</strong> ${c.receta || '-'}</div>
+      <div><strong>💊 Receta:</strong> ${c.receta || '-'}</div>
     `;
     contenedor.appendChild(card);
   });
@@ -459,7 +449,7 @@ async function guardarAtencionClinica(e) {
   const selectMascota = document.getElementById('cli-select-mascota');
 
   if (!selectTutor.value || !selectMascota.value) {
-    alert("Debes seleccionar un tutor y una mascota antes de guardar la ficha.");
+    alert("Selecciona tutor y mascota.");
     return;
   }
 
@@ -475,12 +465,12 @@ async function guardarAtencionClinica(e) {
 
   try {
     await enviarFormularioBackend('guardarAtencionClinica', payload);
-    alert('🩺 Consulta clínica registrada con éxito.');
+    alert('🩺 Consulta registrada.');
     document.getElementById('form-clinica').reset();
     document.getElementById('cli-info-paciente').classList.add('hidden');
     await cargarDatosBackend();
   } catch (err) {
-    alert('Error al guardar atención: ' + err);
+    alert('Error: ' + err.message);
   }
 }
 
@@ -523,23 +513,35 @@ async function guardarPeluqueria(e) {
 
   try {
     await enviarFormularioBackend('guardarPeluqueria', payload);
-    alert('✂️ Servicio de Peluquería registrado.');
+    alert('✂️ Registro guardado.');
     document.getElementById('form-peluqueria').reset();
     await cargarDatosBackend();
   } catch (err) {
-    alert('Error guardando registro: ' + err);
+    alert('Error: ' + err.message);
   }
 }
 
 // -----------------------------------------------------------------
-// INVENTARIO CON MARGEN DE GANANCIA
+// INVENTARIO - CÁLCULO CÁLCULO AUTOMÁTICO DE VALOR NETO, IVA Y TOTAL
 // -----------------------------------------------------------------
 function calcularPrecioVentaSugerido() {
-  const costo = parseFloat(document.getElementById('inv-costo').value) || 0;
-  const margen = parseFloat(document.getElementById('inv-margen').value) || 0;
-  if (costo > 0) {
-    const precioSugerido = Math.round(costo * (1 + (margen / 100)));
-    document.getElementById('inv-precio').value = precioSugerido;
+  const costoNeto = parseFloat(document.getElementById('inv-costo').value) || 0;
+  const margenPct = parseFloat(document.getElementById('inv-margen').value) || 0;
+
+  if (costoNeto > 0) {
+    const valorVentaNeto = Math.round(costoNeto * (1 + (margenPct / 100)));
+    const iva = Math.round(valorVentaNeto * 0.19);
+    const precioFinalBruto = valorVentaNeto + iva;
+
+    document.getElementById('inv-precio').value = precioFinalBruto;
+
+    document.getElementById('lbl-inv-neto').innerText = `$${valorVentaNeto.toLocaleString('es-CL')}`;
+    document.getElementById('lbl-inv-iva').innerText = `$${iva.toLocaleString('es-CL')}`;
+    document.getElementById('lbl-inv-total').innerText = `$${precioFinalBruto.toLocaleString('es-CL')}`;
+  } else {
+    document.getElementById('lbl-inv-neto').innerText = `$0`;
+    document.getElementById('lbl-inv-iva').innerText = `$0`;
+    document.getElementById('lbl-inv-total').innerText = `$0`;
   }
 }
 
@@ -548,20 +550,22 @@ function renderizarTablaInventario() {
   if (!tbody) return;
 
   if (listaInventarioGlobal.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#777;">No hay productos registrados en el inventario.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#777;">No hay productos en el inventario.</td></tr>';
     return;
   }
 
   tbody.innerHTML = '';
   listaInventarioGlobal.forEach(p => {
     const tr = document.createElement('tr');
+    
+    // Mapeo preciso de nombres de propiedades del backend
     const codigo = p.sku || p.codigo || '-';
     const nombre = p.nombre || '-';
     const categoria = p.categoria || 'General';
     const costo = Number(p.costo || 0).toLocaleString('es-CL');
-    const margen = (p.margen_pct !== undefined && p.margen_pct !== null) ? p.margen_pct : 0;
-    const precio = Number(p.precio_venta || p.precio || 0).toLocaleString('es-CL');
-    const stock = p.stock || 0;
+    const margen = (p.margen_pct !== undefined && p.margen_pct !== null && p.margen_pct !== "") ? p.margen_pct : (p.margen || 0);
+    const precioVenta = Number(p.precio_venta || p.precio || 0).toLocaleString('es-CL');
+    const stock = (p.stock !== undefined && p.stock !== null) ? p.stock : 0;
 
     tr.innerHTML = `
       <td><code>${codigo}</code></td>
@@ -569,7 +573,7 @@ function renderizarTablaInventario() {
       <td><span class="badge-cat">${categoria}</span></td>
       <td>$${costo}</td>
       <td>${margen}%</td>
-      <td><strong>$${precio}</strong></td>
+      <td><strong>$${precioVenta}</strong></td>
       <td><strong style="color: ${stock <= 3 ? '#e74c3c' : '#2e7d32'}">${stock} u.</strong></td>
     `;
     tbody.appendChild(tr);
@@ -595,14 +599,15 @@ async function guardarProducto(e) {
     alert('📦 ' + json.message);
     document.getElementById('form-inventario').reset();
     document.getElementById('inv-margen').value = "30";
+    calcularPrecioVentaSugerido();
     await cargarDatosBackend();
   } catch (err) {
-    alert('Error al guardar producto: ' + err.message);
+    alert('Error guardando producto: ' + err.message);
   }
 }
 
 // -----------------------------------------------------------------
-// POS / CAJA DE VENTAS
+// POS / CAJA
 // -----------------------------------------------------------------
 function renderizarPOS() {
   filtrarProductosPOS();
@@ -639,7 +644,7 @@ function filtrarProductosPOS() {
     card.innerHTML = `
       <div class="pos-item-title">${nombre}</div>
       <div class="pos-item-price">$${precio.toLocaleString('es-CL')}</div>
-      <div class="pos-item-stock">Stock: ${stock}</div>
+      <div class="pos-item-stock">Stock: ${stock} u.</div>
     `;
 
     card.onclick = () => agregarAlCarrito(codigo, nombre, precio, stock);
@@ -654,13 +659,13 @@ function agregarAlCarrito(codigo, nombre, precio, stockMax) {
     if (existe.cantidad < stockMax) {
       existe.cantidad++;
     } else {
-      alert("⚠️ Has alcanzado el límite del stock disponible para este producto.");
+      alert("⚠️ Límite de stock alcanzado.");
     }
   } else {
     if (stockMax > 0) {
       carritoPOS.push({ codigo, nombre, precio, cantidad: 1, stockMax });
     } else {
-      alert("⚠️ Sin stock disponible para realizar la venta.");
+      alert("⚠️ Producto sin stock disponible.");
     }
   }
   renderizarCarritoPOS();
@@ -712,7 +717,7 @@ function modificarCantidadCarrito(index, cambio) {
 
   item.cantidad += cambio;
   if (item.cantidad > item.stockMax) {
-    alert("⚠️ No hay más stock disponible.");
+    alert("⚠️ Límite de stock disponible.");
     item.cantidad = item.stockMax;
   }
 
@@ -724,7 +729,7 @@ function modificarCantidadCarrito(index, cambio) {
 
 async function procesarVentaPOS() {
   if (carritoPOS.length === 0) {
-    alert("El carrito está vacío. Agrega productos antes de cobrarlos.");
+    alert("El carrito está vacío.");
     return;
   }
 
@@ -739,11 +744,11 @@ async function procesarVentaPOS() {
 
   try {
     await enviarFormularioBackend('guardarVenta', payload);
-    alert(`💳 Venta procesada con éxito por $${totalCalculado.toLocaleString('es-CL')} (${metodoPago}).`);
+    alert(`💳 Venta realizada con éxito ($${totalCalculado.toLocaleString('es-CL')}).`);
     carritoPOS = [];
     renderizarCarritoPOS();
     await cargarDatosBackend();
   } catch (err) {
-    alert("Error al procesar la venta: " + err.message);
+    alert("Error procesando venta: " + err.message);
   }
 }
