@@ -13,7 +13,7 @@
   <!-- ENCABEZADO -->
   <header class="app-header">
     <div class="logo-container">
-      <img src="https://manadapatitas.github.io/veterinaria/logo.png" alt="Manada Patitas" class="app-logo" onerror="this.style.display='none'">
+      <img src="./icon-192x192.png" alt="Manada Patitas" class="app-logo" onerror="this.style.display='none'">
       <div class="brand-text">
         <h1>Manada Patitas</h1>
         <span class="sub-brand">Gestión Vet & Petshop</span>
@@ -103,7 +103,6 @@
         </form>
       </div>
 
-      <!-- PARRILLA DE DISPONIBILIDAD DE BLOQUES -->
       <div class="card" style="margin-top: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
           <h3 style="margin: 0;">Agenda Diaria</h3>
@@ -112,7 +111,6 @@
             <input type="date" id="filtro-fecha-agenda" onchange="renderizarParrillaAgenda()" style="padding: 6px; border-radius: 6px; border: 1px solid #ccc;">
           </div>
         </div>
-
         <div id="grid-horarios" class="horarios-grid"></div>
       </div>
     </section>
@@ -188,7 +186,7 @@
             </div>
           </div>
 
-          <div id="cli-info-paciente" class="info-banner hidden" style="margin-top: 10px; background: #eef9f7; padding: 10px; border-radius: 6px;">
+          <div id="cli-info-paciente" class="info-banner hidden">
             <span>🐾 <strong>Mascota:</strong> <span id="lbl-cli-mascota">-</span></span> | 
             <span>🧬 <strong>Raza:</strong> <span id="lbl-cli-raza">-</span></span> | 
             <span>🎂 <strong>Edad:</strong> <span id="lbl-cli-edad">-</span></span>
@@ -212,10 +210,144 @@
       </div>
     </section>
 
-    <!-- OTRAS PESTAÑAS -->
-    <section id="sec-peluqueria" class="tab-content hidden"><div class="card"><h3>✂️ Peluquería y Estética</h3></div></section>
-    <section id="sec-inventario" class="tab-content hidden"><div class="card"><h3>📦 Control de Inventario</h3></div></section>
-    <section id="sec-caja" class="tab-content hidden"><div class="card"><h3>💳 Punto de Venta / POS</h3></div></section>
+    <!-- VISTA 4: PELUQUERÍA -->
+    <section id="sec-peluqueria" class="tab-content hidden">
+      <div class="card">
+        <h3>✂️ Registro de Peluquería y Estética</h3>
+        <form id="form-peluqueria" onsubmit="guardarPeluqueria(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Seleccionar Tutor</label>
+              <select id="pel-select-tutor" onchange="actualizarMascotasPeluqueria()" required>
+                <option value="">-- Selecciona un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Seleccionar Mascota</label>
+              <select id="pel-select-mascota" required disabled>
+                <option value="">-- Selecciona primero un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Servicio Realizado</label>
+              <select id="pel-servicio">
+                <option value="Baño y Secado">Baño y Secado</option>
+                <option value="Corte Higiénico">Corte Higiénico</option>
+                <option value="Corte de Raza + Baño">Corte de Raza + Baño</option>
+                <option value="Deslanado / Cepillado">Deslanado / Cepillado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Valor Servicio ($)</label>
+              <input type="number" id="pel-monto" placeholder="Ej: 18000" required>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label>Observaciones / Comportamiento</label>
+            <textarea id="pel-obs" rows="2" placeholder="Ej: Buen comportamiento, nudos en orejas..."></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Registrar Servicio Peluquería</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- VISTA 5: INVENTARIO -->
+    <section id="sec-inventario" class="tab-content hidden">
+      <div class="card">
+        <h3>📦 Nuevo Producto / Stock</h3>
+        <form id="form-inventario" onsubmit="guardarProducto(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Código de Barras / SKU</label>
+              <input type="text" id="inv-codigo" placeholder="Ej: 780123456789" required>
+            </div>
+            <div class="form-group">
+              <label>Nombre del Producto</label>
+              <input type="text" id="inv-nombre" placeholder="Ej: Alimento Perro Adulto 3kg" required>
+            </div>
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="inv-categoria">
+                <option value="Alimentos">Alimentos</option>
+                <option value="Farmacia">Farmacia / Medicamentos</option>
+                <option value="Accesorios">Accesorios y Juguetes</option>
+                <option value="Estética">Snacks y Premios</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Precio Venta ($)</label>
+              <input type="number" id="inv-precio" placeholder="Ej: 15990" required>
+            </div>
+            <div class="form-group">
+              <label>Stock Disponible</label>
+              <input type="number" id="inv-stock" placeholder="Ej: 10" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary">Agregar / Actualizar Inventario</button>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h3>📋 Lista de Productos en Stock</h3>
+        <div class="table-responsive" style="margin-top: 10px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Precio</th>
+                <th>Stock</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-inventario-body">
+              <tr><td colspan="5" style="text-align:center;">Cargando inventario...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA 6: POS / CAJA -->
+    <section id="sec-caja" class="tab-content hidden">
+      <div class="pos-container">
+        <!-- Panel Izquierdo: Catálogo y Búsqueda -->
+        <div class="card pos-catalog">
+          <h3>🛒 Punto de Venta</h3>
+          <div class="form-group" style="margin-bottom: 15px;">
+            <input type="text" id="pos-buscar" placeholder="🔍 Buscar por nombre o código..." oninput="filtrarProductosPOS()">
+          </div>
+          <div id="pos-grid-productos" class="pos-grid"></div>
+        </div>
+
+        <!-- Panel Derecho: Carrito de Compras -->
+        <div class="card pos-cart">
+          <h3>🧾 Detalle de Venta</h3>
+          <div id="pos-items-carrito" class="cart-items">
+            <p style="color: #777; text-align: center; margin-top: 20px;">El carrito está vacío</p>
+          </div>
+          
+          <div class="cart-summary">
+            <div class="summary-row">
+              <span>Total:</span>
+              <strong id="pos-total-monto" style="font-size: 1.4rem; color: #008080;">$0</strong>
+            </div>
+            
+            <div class="form-group" style="margin-top: 10px;">
+              <label>Método de Pago:</label>
+              <select id="pos-metodo-pago">
+                <option value="Efectivo">💵 Efectivo</option>
+                <option value="Débito / Crédito">💳 Débito / Crédito (Transbank)</option>
+                <option value="Transferencia">📲 Transferencia Bancaria</option>
+              </select>
+            </div>
+
+            <button class="btn-primary" style="width: 100%; margin-top: 15px; padding: 12px;" onclick="procesarVentaPOS()">Finalizar Venta</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <script src="app.js"></script>
