@@ -1,0 +1,162 @@
+/* ESTILOS BASE Y REINICIO */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background-color: #f4f7f6;
+  color: #333;
+}
+
+.hidden { display: none !important; }
+
+/* BLOQUEO TOTAL ANTES DE LOGIN */
+body:not(.autenticado) .main-content,
+body:not(.autenticado) .app-header {
+  display: none !important;
+}
+
+/* CONTROL DE VISIBILIDAD DE PESTAÑAS SEGÚN ROL */
+body.rol-peluqueria .solo-admin,
+body.rol-peluqueria .solo-vet,
+body.rol-peluqueria .solo-caja,
+body.rol-peluqueria #nav-btn-clinica,
+body.rol-peluqueria #nav-btn-inventario,
+body.rol-peluqueria #nav-btn-caja {
+  display: none !important;
+}
+
+body.rol-veterinaria .solo-admin,
+body.rol-veterinaria .solo-peluqueria,
+body.rol-veterinaria .solo-caja,
+body.rol-veterinaria #nav-btn-peluqueria,
+body.rol-veterinaria #nav-btn-inventario,
+body.rol-veterinaria #nav-btn-caja {
+  display: none !important;
+}
+
+/* Nota: El rol 'caja' ya no tiene restricciones y puede ver todo igual que el admin */
+
+/* ENCABEZADO */
+.app-header {
+  background-color: #008080;
+  color: white;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.logo-container { display: flex; align-items: center; gap: 12px; }
+.app-logo { height: 40px; border-radius: 6px; }
+.brand-text h1 { font-size: 1.4rem; margin: 0; }
+.sub-brand { font-size: 0.8rem; opacity: 0.85; }
+
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.user-badge { background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 12px; font-size: 0.85rem; }
+
+/* BOTONES */
+button { border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+.btn-primary { background-color: #008080; color: white; }
+.btn-primary:hover { background-color: #006666; }
+.btn-secondary { background-color: #2c3e50; color: white; }
+.btn-danger { background-color: #e74c3c; color: white; }
+
+/* MODAL LOGIN */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999;
+}
+.modal-content { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+
+/* NAVEGACIÓN TAB */
+.main-content { padding: 20px; max-width: 1200px; margin: 0 auto; }
+.nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab-btn { background-color: #e0e0e0; color: #444; border-radius: 20px; padding: 8px 16px; }
+.tab-btn.active { background-color: #008080; color: white; }
+
+/* TARJETAS Y FORMULARIOS */
+.card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 15px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 0.85rem; font-weight: 600; color: #555; }
+input, select, textarea { padding: 9px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
+input:focus, select:focus, textarea:focus { border-color: #008080; outline: none; }
+
+/* BANNER PACIENTE EN CLÍNICA */
+.info-banner {
+  background-color: #e0f2f1;
+  border-left: 4px solid #008080;
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #004d40;
+}
+
+/* HISTORIAL CLÍNICO */
+.card-historial {
+  border-left: 3px solid #008080;
+  background: #f9f9f9;
+  padding: 12px 15px;
+  margin-bottom: 12px;
+  border-radius: 0 6px 6px 0;
+}
+
+/* PARRILLA DE HORARIOS Y AGENDA (30 MIN) */
+.horarios-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.bloque-hora {
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid #e0e0e0;
+}
+
+.bloque-hora.disponible {
+  background-color: #e8f5e9;
+  border-color: #a5d6a7;
+  color: #2e7d32;
+  cursor: pointer;
+}
+
+.bloque-hora.disponible:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  background-color: #c8e6c9;
+}
+
+.bloque-hora.ocupado {
+  background-color: #ffebee;
+  border-color: #ef9a9a;
+  color: #c62828;
+}
+
+.bloque-hora.pasado {
+  background-color: #f5f5f5;
+  border-color: #e0e0e0;
+  color: #9e9e9e;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.bloque-hora .hora-titulo {
+  font-size: 1.05rem;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.bloque-hora .info-cita {
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
