@@ -6,7 +6,6 @@
   <title>Manada Patitas - Gestión Vet & Petshop</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
 
@@ -26,7 +25,7 @@
     </div>
   </header>
 
-  <!-- MODAL DE LOGIN -->
+  <!-- MODAL LOGIN -->
   <div id="modal-login" class="modal-overlay">
     <div class="modal-content">
       <h2>Iniciar Sesión</h2>
@@ -53,7 +52,7 @@
     </div>
   </div>
 
-  <!-- NAVEGACIÓN PRINCIPAL -->
+  <!-- NAVEGACIÓN -->
   <main class="main-content">
     <nav class="nav-tabs">
       <button id="nav-btn-agenda" class="tab-btn active" onclick="cambiarPestana('agenda')">📅 Agenda & Citas</button>
@@ -64,31 +63,28 @@
       <button id="nav-btn-caja" class="tab-btn" onclick="cambiarPestana('caja')">💳 POS / Caja</button>
     </nav>
 
-    <!-- VISTA 1: AGENDA -->
+    <!-- AGENDA -->
     <section id="sec-agenda" class="tab-content active">
       <div class="card">
         <h3>📅 Agendar Nueva Cita</h3>
         <form id="form-agenda" onsubmit="guardarCita(event)">
           <div class="form-grid">
             <div class="form-group">
-              <label>Seleccionar Tutor (RUT / Nombre)</label>
+              <label>Seleccionar Tutor</label>
               <select id="age-select-tutor" onchange="actualizarMascotasAgenda()" required>
                 <option value="">-- Selecciona un Tutor --</option>
               </select>
             </div>
-
             <div class="form-group">
               <label>Seleccionar Mascota</label>
               <select id="age-select-mascota" required disabled>
                 <option value="">-- Selecciona primero un Tutor --</option>
               </select>
             </div>
-
             <div class="form-group">
               <label>Fecha y Hora Seleccionada</label>
               <input type="text" id="agenda-fecha" readonly placeholder="Haz clic en un bloque abajo ⬇️" required style="background-color: #f8f9fa; cursor: not-allowed; font-weight: bold; color: #008080;">
             </div>
-
             <div class="form-group">
               <label>Tipo de Servicio</label>
               <select id="agenda-servicio">
@@ -115,7 +111,7 @@
       </div>
     </section>
 
-    <!-- VISTA 2: PACIENTES Y TUTORES -->
+    <!-- TUTORES -->
     <section id="sec-tutores" class="tab-content hidden">
       <div class="card">
         <h3>🐾 Registrar Mascota y Tutor</h3>
@@ -142,7 +138,7 @@
               <input type="text" id="tut-raza" placeholder="Ej: Canino / Poodle" required>
             </div>
             <div class="form-group">
-              <label>Edad (Ej: 3 años / 6 meses)</label>
+              <label>Edad</label>
               <input type="text" id="tut-edad" placeholder="Ej: 3 años">
             </div>
             <div class="form-group">
@@ -155,31 +151,28 @@
       </div>
     </section>
 
-    <!-- VISTA 3: CONSULTA CLÍNICA -->
+    <!-- CLINICA -->
     <section id="sec-clinica" class="tab-content hidden">
       <div class="card">
         <h3>🩺 Ficha Médica Veterinaria</h3>
         <form id="form-clinica" onsubmit="guardarAtencionClinica(event)">
           <div class="form-grid">
             <div class="form-group">
-              <label>Seleccionar Tutor (RUT / Nombre)</label>
+              <label>Seleccionar Tutor</label>
               <select id="cli-select-tutor" onchange="actualizarMascotasClinica()" required>
                 <option value="">-- Selecciona un Tutor --</option>
               </select>
             </div>
-
             <div class="form-group">
               <label>Seleccionar Mascota</label>
               <select id="cli-select-mascota" onchange="cargarDatosMascotaSeleccionada()" required disabled>
                 <option value="">-- Selecciona primero un Tutor --</option>
               </select>
             </div>
-
             <div class="form-group">
               <label>Temperatura (°C)</label>
               <input type="number" step="0.1" id="cli-temp" placeholder="Ej: 38.5">
             </div>
-
             <div class="form-group">
               <label>Peso Actual (kg)</label>
               <input type="number" step="0.1" id="cli-peso" placeholder="Ej: 8.5">
@@ -210,7 +203,7 @@
       </div>
     </section>
 
-    <!-- VISTA 4: PELUQUERÍA -->
+    <!-- PELUQUERIA -->
     <section id="sec-peluqueria" class="tab-content hidden">
       <div class="card">
         <h3>✂️ Registro de Peluquería y Estética</h3>
@@ -243,15 +236,15 @@
             </div>
           </div>
           <div class="form-group" style="margin-bottom: 15px;">
-            <label>Observaciones / Comportamiento</label>
-            <textarea id="pel-obs" rows="2" placeholder="Ej: Buen comportamiento, nudos en orejas..."></textarea>
+            <label>Observaciones</label>
+            <textarea id="pel-obs" rows="2" placeholder="Observaciones..."></textarea>
           </div>
           <button type="submit" class="btn-primary">Registrar Servicio Peluquería</button>
         </form>
       </div>
     </section>
 
-    <!-- VISTA 5: INVENTARIO CON MARGEN DE GANANCIA -->
+    <!-- INVENTARIO -->
     <section id="sec-inventario" class="tab-content hidden">
       <div class="card">
         <h3>📦 Nuevo Producto / Actualizar Stock</h3>
@@ -283,15 +276,23 @@
               <input type="number" id="inv-margen" placeholder="Ej: 30" value="30" oninput="calcularPrecioVentaSugerido()" required>
             </div>
             <div class="form-group">
-              <label>Precio Venta ($)</label>
-              <input type="number" id="inv-precio" placeholder="Ej: 13000" required>
+              <label>Precio Venta Final (Bruto $)</label>
+              <input type="number" id="inv-precio" placeholder="Ej: 15470" required>
             </div>
             <div class="form-group">
               <label>Stock Disponible</label>
               <input type="number" id="inv-stock" placeholder="Ej: 10" required>
             </div>
           </div>
-          <button type="submit" class="btn-primary">Agregar / Actualizar Inventario</button>
+
+          <!-- BANNER DESGLOSE IVA Y NETO -->
+          <div id="inv-desglose-box" style="margin-top: 15px; padding: 12px; background-color: #e0f2f1; border-radius: 8px; border-left: 5px solid #008080; display: flex; gap: 20px; flex-wrap: wrap;">
+            <div>💵 <strong>Valor Venta Neto:</strong> <span id="lbl-inv-neto">$0</span></div>
+            <div>🧾 <strong>IVA (19%):</strong> <span id="lbl-inv-iva">$0</span></div>
+            <div>🏷️ <strong>Precio Final Bruto:</strong> <strong id="lbl-inv-total" style="color:#008080;">$0</strong></div>
+          </div>
+
+          <button type="submit" class="btn-primary" style="margin-top: 15px;">Agregar / Actualizar Inventario</button>
         </form>
       </div>
 
@@ -318,10 +319,9 @@
       </div>
     </section>
 
-    <!-- VISTA 6: POS / CAJA DE VENTAS -->
+    <!-- POS / CAJA -->
     <section id="sec-caja" class="tab-content hidden">
       <div class="pos-container">
-        <!-- Panel Izquierdo: Catálogo y Búsqueda -->
         <div class="card pos-catalog">
           <h3>🛒 Punto de Venta</h3>
           <div class="form-group" style="margin-bottom: 15px;">
@@ -330,7 +330,6 @@
           <div id="pos-grid-productos" class="pos-grid"></div>
         </div>
 
-        <!-- Panel Derecho: Carrito de Compras -->
         <div class="card pos-cart">
           <h3>🧾 Detalle de Venta</h3>
           <div id="pos-items-carrito" class="cart-items">
