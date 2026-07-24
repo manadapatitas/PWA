@@ -1,5 +1,5 @@
 // =================================================================
-// FRONTEND APP.JS - MANADA PATITAS PWA (INTEGRADO COMPLETO)
+// FRONTEND APP.JS - MANADA PATITAS PWA (INTEGRADO COMPLETO + POS + INVENTARIO)
 // =================================================================
 
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAAyuqBHUON3C17OW4SLbeRxoutLyYneHcFGfQ_Q4OqwoGBCRESrcF/exec"; 
@@ -17,6 +17,7 @@ let listaCitasGlobal = [];
 let listaClinicaGlobal = [];
 let listaPeluqueriaGlobal = [];
 let listaInventarioGlobal = [];
+let carritoPOS = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   inicializarAutenticacion();
@@ -127,6 +128,10 @@ function cambiarPestana(idPestana) {
 
   if (idPestana === 'agenda') {
     renderizarParrillaAgenda();
+  } else if (idPestana === 'inventario') {
+    renderizarTablaInventario();
+  } else if (idPestana === 'caja') {
+    renderizarPOS();
   }
 }
 
@@ -162,7 +167,8 @@ async function cargarDatosBackend() {
 
     poblarCombosTutores();
     renderizarParrillaAgenda();
-    cargarDatosMascotaSeleccionada();
+    renderizarTablaInventario();
+    renderizarPOS();
   } catch (err) {
     console.error("Error cargando datos del backend:", err);
   }
@@ -196,12 +202,13 @@ function formatearInputRut(input) {
 }
 
 // -----------------------------------------------------------------
-// AGENDA Y COMBOS
+// COMBOS DE TUTORES EN TODAS LAS SECCIONES
 // -----------------------------------------------------------------
 function poblarCombosTutores() {
   const selectsTutor = [
     document.getElementById('age-select-tutor'),
-    document.getElementById('cli-select-tutor')
+    document.getElementById('cli-select-tutor'),
+    document.getElementById('pel-select-tutor')
   ];
 
   const tutoresMap = new Map();
@@ -222,6 +229,9 @@ function poblarCombosTutores() {
   });
 }
 
+// -----------------------------------------------------------------
+// AGENDA
+// -----------------------------------------------------------------
 function actualizarMascotasAgenda() {
   const rutSeleccionado = document.getElementById('age-select-tutor').value;
   const selectMascota = document.getElementById('age-select-mascota');
@@ -244,7 +254,6 @@ function actualizarMascotasAgenda() {
 
 function normalizarFechaHoraCita(rawStr) {
   if (!rawStr) return "";
-  
   if (rawStr instanceof Date) {
     const yyyy = rawStr.getFullYear();
     const mm = String(rawStr.getMonth() + 1).padStart(2, '0');
@@ -253,16 +262,13 @@ function normalizarFechaHoraCita(rawStr) {
     const min = String(rawStr.getMinutes()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
   }
-
   let s = rawStr.toString().trim();
-  
   if (s.includes('T')) {
     const partes = s.split('T');
     const fecha = partes[0];
     const hora = partes[1] ? partes[1].substring(0, 5) : "00:00";
     return `${fecha} ${hora}`;
   }
-  
   return s.substring(0, 16);
 }
 
@@ -280,7 +286,6 @@ function renderizarParrillaAgenda() {
 
   horasJornada.forEach(hora => {
     const claveBloque = `${fechaSeleccionada} ${hora}`;
-    
     const cita = listaCitasGlobal.find(c => {
       const rawFechaCita = c.fecha_hora || c.Fecha_Hora || c.fecha || c.Fecha || '';
       return normalizarFechaHoraCita(rawFechaCita) === claveBloque;
@@ -325,18 +330,6 @@ async function guardarCita(e) {
     return;
   }
 
-  const fechaHoraNormalizada = normalizarFechaHoraCita(fechaInput);
-  const yaOcupado = listaCitasGlobal.some(c => {
-    const raw = c.fecha_hora || c.Fecha_Hora || c.fecha || c.Fecha || '';
-    return normalizarFechaHoraCita(raw) === fechaHoraNormalizada;
-  });
-
-  if (yaOcupado) {
-    alert("⚠️ Este horario ya se encuentra reservado. Selecciona otro bloque disponible.");
-    await cargarDatosBackend();
-    return;
-  }
-
   const payload = {
     fecha: fechaInput,
     mascota: selectMascota.value,
@@ -352,24 +345,23 @@ async function guardarCita(e) {
     await cargarDatosBackend();
   } catch (err) {
     alert('⚠️ No se pudo reservar: ' + err.message);
-    await cargarDatosBackend();
   }
 }
 
 // -----------------------------------------------------------------
-// PACIENTES Y TUTORES
+// TUTORES
 // -----------------------------------------------------------------
 async function guardarTutor(e) {
   if (e) e.preventDefault();
-  const rut = document.getElementById('tut-rut').value;
-  const nombre = document.getElementById('tut-nombre').value;
-  const telefono = document.getElementById('tut-telefono').value;
-  const mascota = document.getElementById('tut-mascota').value;
-  const raza = document.getElementById('tut-raza').value;
-  const edad = document.getElementById('tut-edad').value;
-  const peso = document.getElementById('tut-peso').value;
-
-  const payload = { rut, nombre, telefono, mascota, raza, edad, peso };
+  const payload = {
+    rut: document.getElementById('tut-rut').value,
+    nombre: document.getElementById('tut-nombre').value,
+    telefono: document.getElementById('tut-telefono').value,
+    mascota: document.getElementById('tut-mascota').value,
+    raza: document.getElementById('tut-raza').value,
+    edad: document.getElementById('tut-edad').value,
+    peso: document.getElementById('tut-peso').value
+  };
 
   try {
     await enviarFormularioBackend('guardarTutor', payload);
@@ -392,7 +384,6 @@ function actualizarMascotasClinica() {
   if (!rutSeleccionado) {
     selectMascota.innerHTML = '<option value="">-- Selecciona primero un Tutor --</option>';
     selectMascota.disabled = true;
-    limpiarHistorialClinicoPaciente();
     return;
   }
 
@@ -403,7 +394,6 @@ function actualizarMascotasClinica() {
     selectMascota.innerHTML += `<option value="${nombre}">${nombre}</option>`;
   });
   selectMascota.disabled = false;
-  limpiarHistorialClinicoPaciente();
 }
 
 function cargarDatosMascotaSeleccionada() {
@@ -413,7 +403,6 @@ function cargarDatosMascotaSeleccionada() {
 
   if (!rutSeleccionado || !mascotaNombre) {
     if (banner) banner.classList.add('hidden');
-    limpiarHistorialClinicoPaciente();
     return;
   }
 
@@ -432,11 +421,36 @@ function cargarDatosMascotaSeleccionada() {
   renderizarHistorialClinicoPaciente(rutSeleccionado, mascotaNombre);
 }
 
-function limpiarHistorialClinicoPaciente() {
+function renderizarHistorialClinicoPaciente(rutTutor, nombreMascota) {
   const contenedor = document.getElementById('contenedor-historial-clinico');
-  if (contenedor) {
-    contenedor.innerHTML = '<p style="color:#777;">Selecciona un tutor y una mascota para ver su historial médico particular.</p>';
+  if (!contenedor) return;
+
+  contenedor.innerHTML = '';
+  const rutLimpioSeleccionado = limpiarRutStr(rutTutor);
+
+  const atencionesMascota = listaClinicaGlobal.filter(c => {
+    const rawRutC = c.Rut_Tutor || c.rut_tutor || c.RUT_Tutor || '';
+    const rutCLLimpio = limpiarRutStr(rawRutC);
+    const mascotaC = (c.Mascota || c.mascota || '').toString().trim().toLowerCase();
+    return (rutCLLimpio.includes(rutLimpioSeleccionado) || rutLimpioSeleccionado.includes(rutCLLimpio)) && mascotaC === nombreMascota.trim().toLowerCase();
+  });
+
+  if (atencionesMascota.length === 0) {
+    contenedor.innerHTML = '<p style="color:#777;">Este paciente no registra consultas médicas anteriores.</p>';
+    return;
   }
+
+  [...atencionesMascota].reverse().forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'card-historial';
+    card.innerHTML = `
+      <div style="font-size:0.85rem; color:#666;">📅 ${c.Fecha || c.fecha || '-'} | 🐾 <strong>${c.Mascota || c.mascota || nombreMascota}</strong></div>
+      <div><strong>🌡️ Temp:</strong> ${c.Temperatura || c.temperatura || '-'} °C | <strong>⚖️ Peso:</strong> ${c.Peso || c.peso || '-'} kg</div>
+      <div><strong>🩺 Diagnóstico:</strong> ${c.Diagnostico || c.diagnostico || '-'}</div>
+      <div><strong>💊 Tratamiento / Receta:</strong> ${c.Receta || c.receta || '-'}</div>
+    `;
+    contenedor.appendChild(card);
+  });
 }
 
 async function guardarAtencionClinica(e) {
@@ -465,51 +479,253 @@ async function guardarAtencionClinica(e) {
     document.getElementById('form-clinica').reset();
     document.getElementById('cli-info-paciente').classList.add('hidden');
     await cargarDatosBackend();
-    cargarDatosMascotaSeleccionada();
   } catch (err) {
     alert('Error al guardar atención: ' + err);
   }
 }
 
-function renderizarHistorialClinicoPaciente(rutTutor, nombreMascota) {
-  const contenedor = document.getElementById('contenedor-historial-clinico');
-  if (!contenedor) return;
+// -----------------------------------------------------------------
+// PELUQUERÍA
+// -----------------------------------------------------------------
+function actualizarMascotasPeluqueria() {
+  const rutSeleccionado = document.getElementById('pel-select-tutor').value;
+  const selectMascota = document.getElementById('pel-select-mascota');
+  if (!selectMascota) return;
 
-  contenedor.innerHTML = '';
-  const rutLimpioSeleccionado = limpiarRutStr(rutTutor);
-
-  const atencionesMascota = listaClinicaGlobal.filter(c => {
-    const rawRutC = c.Rut_Tutor || c.rut_tutor || c.RUT_Tutor || '';
-    const rutCLLimpio = limpiarRutStr(rawRutC);
-    const mascotaC = (c.Mascota || c.mascota || '').toString().trim().toLowerCase();
-    
-    const matchRut = rutCLLimpio.includes(rutLimpioSeleccionado) || rutLimpioSeleccionado.includes(rutCLLimpio);
-    const matchMascota = mascotaC === nombreMascota.trim().toLowerCase();
-
-    return matchRut && matchMascota;
-  });
-
-  if (atencionesMascota.length === 0) {
-    contenedor.innerHTML = '<p style="color:#777;">Este paciente no registra consultas médicas anteriores.</p>';
+  if (!rutSeleccionado) {
+    selectMascota.innerHTML = '<option value="">-- Selecciona primero un Tutor --</option>';
+    selectMascota.disabled = true;
     return;
   }
 
-  [...atencionesMascota].reverse().forEach(c => {
+  const mascotasTutor = listaPacientesGlobal.filter(p => formatearRutChile(p.rut || p.RUT) === rutSeleccionado);
+  selectMascota.innerHTML = '<option value="">-- Selecciona una Mascota --</option>';
+  mascotasTutor.forEach(p => {
+    const nombre = p.mascota || p.Mascota || 'Mascota';
+    selectMascota.innerHTML += `<option value="${nombre}">${nombre}</option>`;
+  });
+  selectMascota.disabled = false;
+}
+
+async function guardarPeluqueria(e) {
+  if (e) e.preventDefault();
+  const selectTutor = document.getElementById('pel-select-tutor');
+  const selectMascota = document.getElementById('pel-select-mascota');
+
+  const payload = {
+    rut_tutor: selectTutor.value,
+    tutor: selectTutor.options[selectTutor.selectedIndex].text,
+    mascota: selectMascota.value,
+    servicio: document.getElementById('pel-servicio').value,
+    monto: document.getElementById('pel-monto').value,
+    observaciones: document.getElementById('pel-obs').value
+  };
+
+  try {
+    await enviarFormularioBackend('guardarPeluqueria', payload);
+    alert('✂️ Servicio de Peluquería registrado.');
+    document.getElementById('form-peluqueria').reset();
+    await cargarDatosBackend();
+  } catch (err) {
+    alert('Error guardando registro: ' + err);
+  }
+}
+
+// -----------------------------------------------------------------
+// INVENTARIO
+// -----------------------------------------------------------------
+function renderizarTablaInventario() {
+  const tbody = document.getElementById('tabla-inventario-body');
+  if (!tbody) return;
+
+  if (listaInventarioGlobal.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#777;">No hay productos registrados en el inventario.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = '';
+  listaInventarioGlobal.forEach(p => {
+    const tr = document.createElement('tr');
+    const codigo = p.codigo || p.Codigo || p.sku || '-';
+    const nombre = p.nombre || p.Nombre || p.producto || '-';
+    const categoria = p.categoria || p.Categoria || 'General';
+    const precio = Number(p.precio || p.Precio || 0).toLocaleString('es-CL');
+    const stock = p.stock || p.Stock || 0;
+
+    tr.innerHTML = `
+      <td><code>${codigo}</code></td>
+      <td><strong>${nombre}</strong></td>
+      <td><span class="badge-cat">${categoria}</span></td>
+      <td>$${precio}</td>
+      <td><strong style="color: ${stock <= 3 ? '#e74c3c' : '#2e7d32'}">${stock} u.</strong></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function guardarProducto(e) {
+  if (e) e.preventDefault();
+  const payload = {
+    codigo: document.getElementById('inv-codigo').value,
+    nombre: document.getElementById('inv-nombre').value,
+    categoria: document.getElementById('inv-categoria').value,
+    precio: document.getElementById('inv-precio').value,
+    stock: document.getElementById('inv-stock').value
+  };
+
+  try {
+    await enviarFormularioBackend('guardarProducto', payload);
+    alert('📦 Producto actualizado correctamente.');
+    document.getElementById('form-inventario').reset();
+    await cargarDatosBackend();
+  } catch (err) {
+    alert('Error al guardar producto: ' + err.message);
+  }
+}
+
+// -----------------------------------------------------------------
+// POS / CAJA DE VENTAS
+// -----------------------------------------------------------------
+function renderizarPOS() {
+  filtrarProductosPOS();
+  renderizarCarritoPOS();
+}
+
+function filtrarProductosPOS() {
+  const contenedor = document.getElementById('pos-grid-productos');
+  const buscarInput = document.getElementById('pos-buscar');
+  if (!contenedor) return;
+
+  const termino = buscarInput ? buscarInput.value.toLowerCase().trim() : "";
+  contenedor.innerHTML = '';
+
+  const productosFiltrados = listaInventarioGlobal.filter(p => {
+    const nom = (p.nombre || p.Nombre || '').toLowerCase();
+    const cod = (p.codigo || p.Codigo || '').toLowerCase();
+    return nom.includes(termino) || cod.includes(termino);
+  });
+
+  if (productosFiltrados.length === 0) {
+    contenedor.innerHTML = '<p style="color:#777; grid-column: 1/-1;">No se encontraron productos.</p>';
+    return;
+  }
+
+  productosFiltrados.forEach(p => {
     const card = document.createElement('div');
-    card.className = 'card-historial';
-    const fechaAtencion = c.Fecha || c.fecha || '-';
-    const tempAtencion = c.Temperatura || c.temperatura || '-';
-    const pesoAtencion = c.Peso || c.peso || '-';
-    const diagAtencion = c.Diagnostico || c.diagnostico || '-';
-    const recAtencion = c.Receta || c.receta || '-';
-    const mascotaAtencion = c.Mascota || c.mascota || nombreMascota;
+    card.className = 'pos-card-item';
+    const nombre = p.nombre || p.Nombre || 'Producto';
+    const precio = Number(p.precio || p.Precio || 0);
+    const stock = Number(p.stock || p.Stock || 0);
+    const codigo = p.codigo || p.Codigo || '';
 
     card.innerHTML = `
-      <div style="font-size:0.85rem; color:#666;">📅 ${fechaAtencion} | 🐾 <strong>${mascotaAtencion}</strong></div>
-      <div><strong>🌡️ Temp:</strong> ${tempAtencion} °C | <strong>⚖️ Peso:</strong> ${pesoAtencion} kg</div>
-      <div><strong>🩺 Diagnóstico:</strong> ${diagAtencion}</div>
-      <div><strong>💊 Tratamiento / Receta:</strong> ${recAtencion}</div>
+      <div class="pos-item-title">${nombre}</div>
+      <div class="pos-item-price">$${precio.toLocaleString('es-CL')}</div>
+      <div class="pos-item-stock">Stock: ${stock}</div>
     `;
+
+    card.onclick = () => agregarAlCarrito(codigo, nombre, precio, stock);
     contenedor.appendChild(card);
   });
+}
+
+function agregarAlCarrito(codigo, nombre, precio, stockMax) {
+  const existe = carritoPOS.find(item => item.codigo === codigo);
+
+  if (existe) {
+    if (existe.cantidad < stockMax) {
+      existe.cantidad++;
+    } else {
+      alert("⚠️ Has alcanzado el límite del stock disponible para este producto.");
+    }
+  } else {
+    if (stockMax > 0) {
+      carritoPOS.push({ codigo, nombre, precio, cantidad: 1, stockMax });
+    } else {
+      alert("⚠️ Sin stock disponible para realizar la venta.");
+    }
+  }
+  renderizarCarritoPOS();
+}
+
+function renderizarCarritoPOS() {
+  const contenedor = document.getElementById('pos-items-carrito');
+  const totalElem = document.getElementById('pos-total-monto');
+  if (!contenedor) return;
+
+  if (carritoPOS.length === 0) {
+    contenedor.innerHTML = '<p style="color: #777; text-align: center; margin-top: 20px;">El carrito está vacío</p>';
+    if (totalElem) totalElem.innerText = '$0';
+    return;
+  }
+
+  contenedor.innerHTML = '';
+  let totalCalculado = 0;
+
+  carritoPOS.forEach((item, index) => {
+    const subtotal = item.precio * item.cantidad;
+    totalCalculado += subtotal;
+
+    const row = document.createElement('div');
+    row.className = 'cart-item-row';
+    row.innerHTML = `
+      <div style="flex:1;">
+        <strong>${item.nombre}</strong><br>
+        <small>$${item.precio.toLocaleString('es-CL')} c/u</small>
+      </div>
+      <div style="display:flex; align-items:center; gap:5px;">
+        <button onclick="modificarCantidadCarrito(${index}, -1)">-</button>
+        <span>${item.cantidad}</span>
+        <button onclick="modificarCantidadCarrito(${index}, 1)">+</button>
+      </div>
+      <div style="font-weight:bold; width:80px; text-align:right;">
+        $${subtotal.toLocaleString('es-CL')}
+      </div>
+    `;
+    contenedor.appendChild(row);
+  });
+
+  if (totalElem) totalElem.innerText = `$${totalCalculado.toLocaleString('es-CL')}`;
+}
+
+function modificarCantidadCarrito(index, cambio) {
+  const item = carritoPOS[index];
+  if (!item) return;
+
+  item.cantidad += cambio;
+  if (item.cantidad > item.stockMax) {
+    alert("⚠️ No hay más stock disponible.");
+    item.cantidad = item.stockMax;
+  }
+
+  if (item.cantidad <= 0) {
+    carritoPOS.splice(index, 1);
+  }
+  renderizarCarritoPOS();
+}
+
+async function procesarVentaPOS() {
+  if (carritoPOS.length === 0) {
+    alert("El carrito está vacío. Agrega productos antes de cobrarlos.");
+    return;
+  }
+
+  const metodoPago = document.getElementById('pos-metodo-pago').value;
+  const totalCalculado = carritoPOS.reduce((sum, i) => sum + (i.precio * i.cantidad), 0);
+
+  const payload = {
+    metodo_pago: metodoPago,
+    total: totalCalculado,
+    items: carritoPOS
+  };
+
+  try {
+    await enviarFormularioBackend('guardarVenta', payload);
+    alert(`💳 Venta procesada con éxito por $${totalCalculado.toLocaleString('es-CL')} (${metodoPago}).`);
+    carritoPOS = [];
+    renderizarCarritoPOS();
+    await cargarDatosBackend();
+  } catch (err) {
+    alert("Error al procesar la venta: " + err.message);
+  }
 }
