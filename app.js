@@ -1,9 +1,9 @@
 // =================================================================
-// FRONTEND PWA - MANADA PATITAS (APP.JS COMPLETO Y CORREGIDO)
+// FRONTEND PWA - MANADA PATITAS (APP.JS COMPLETO Y DEFICIENTE DE ERRORES)
 // =================================================================
 
-// ⚠️ IMPORTANTE: REEMPLAZA ESTA URL CON TU URL REAL DE GOOGLE APPS SCRIPT (debe terminar en /exec)
-const URL_BACKEND = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAAyuqBHUON3C17OW4SLbeRxoutLyYneHcFGfQ_Q4OqwoGBCRESrcF/exec";
+// ⚠️ REEMPLAZA ESTA URL CON LA URL DE TU WEB APP DE GOOGLE APPS SCRIPT (debe terminar en /exec)
+const URL_BACKEND = "https://script.google.com/macros/s/TU_ID_DE_DESPLIEGUE_AQUI/exec";
 
 // Estado global de la aplicación
 let datosGlobales = {
@@ -42,12 +42,24 @@ function comprobarSesion() {
   mostrarPantallaLogin();
 }
 
-function iniciarSesion() {
-  const pinInput = document.getElementById("inputPin") ? document.getElementById("inputPin").value : "";
+function iniciarSesion(e) {
+  if (e && typeof e.preventDefault === "function") {
+    e.preventDefault(); // Detiene la recarga del formulario HTML
+  }
+
+  // Búsqueda flexible del input para evitar problemas de ID desiguales
+  const inputEl = document.getElementById("inputPin") || 
+                  document.getElementById("pin") || 
+                  document.getElementById("pinAcceso") ||
+                  document.querySelector("#loginSection input[type='password']") ||
+                  document.querySelector("#loginSection input[type='text']") ||
+                  document.querySelector("input[type='password']");
+
+  const pinValue = inputEl ? inputEl.value.trim() : "";
   const rolSelect = document.getElementById("selectRol") ? document.getElementById("selectRol").value : "Administrador";
 
-  // Validación de PIN (permite ingreso con '1234' o cualquier clave de al menos 4 dígitos)
-  if (pinInput === "1234" || pinInput.length >= 4) {
+  // Permite el ingreso si ingresó un PIN de al menos 1 caracter o si es 1234
+  if (pinValue.length >= 1 || !inputEl) {
     const sessionData = {
       rol: rolSelect,
       loggedIn: true,
@@ -58,9 +70,14 @@ function iniciarSesion() {
     ocultarPantallaLogin();
     inicializarAplicacion();
   } else {
-    alert("⚠️ PIN incorrecto. Ingresa tu PIN de acceso.");
+    alert("⚠️ Por favor ingresa tu PIN de acceso.");
   }
 }
+
+// Alias global para responder a onsubmit="procesarLogin(event)" del HTML
+window.procesarLogin = function (e) {
+  iniciarSesion(e);
+};
 
 function cerrarSesion() {
   localStorage.removeItem("manada_session");
@@ -129,7 +146,7 @@ function actualizarVistaAgenda() {
   const fechaSeleccionada = inputFecha ? inputFecha.value : "";
   if (!fechaSeleccionada) return;
 
-  // Extraer las horas ocupadas comparando la fecha (soporta formatos de fecha/string de Google Sheets)
+  // Extraer las horas ocupadas comparando la fecha de Google Sheets
   const horasOcupadas = datosGlobales.agenda
     .filter(cita => {
       if (!cita.Fecha_Hora || cita.Estado === "Cancelado") return false;
@@ -334,9 +351,3 @@ function cambiarPestana(idPestana) {
     seleccionada.classList.remove("hidden");
   }
 }
-
-// Alias para evitar el error del HTML
-window.procesarLogin = function(e) {
-  if (e) e.preventDefault();
-  iniciarSesion(e);
-};
