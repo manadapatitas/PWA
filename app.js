@@ -128,22 +128,20 @@ function renderizarAgendaBloques() {
     const cita = citasDelDia.find(c => String(c.Fecha_Hora || c.hora).includes(hora));
 
     const divBloque = document.createElement("div");
-    divBloque.className = "bloque-horario";
-    divBloque.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #e5e7eb; margin-bottom: 5px; background-color: #ffffff; border-radius: 6px;";
-
+    
     if (cita) {
-      divBloque.style.backgroundColor = "#d9534f";
-      divBloque.style.color = "#ffffff";
+      divBloque.className = "bloque-horario bloque-reservado";
       divBloque.innerHTML = `
-        <strong>⏰ ${hora} hrs</strong>
-        <span>🐾 ${cita.Mascota || cita.paciente || "Mascota"} (${cita.Tutor || cita.tutor || "Tutor"})</span>
-        <small style="background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px;">🚫 Reservado</small>
+        <strong style="font-size: 0.95rem;">⏰ ${hora} hrs</strong>
+        <span style="font-weight: 600;">🐾 ${cita.Mascota || cita.paciente || "Mascota"} <small style="font-weight: 400; opacity: 0.8;">(${cita.Tutor || cita.tutor || "Tutor"})</small></span>
+        <span style="background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">RESERVADO</span>
       `;
     } else {
+      divBloque.className = "bloque-horario";
       divBloque.innerHTML = `
-        <strong>⏰ ${hora} hrs</strong>
-        <span style="color: #10b981;">🟢 Disponible</span>
-        <button type="button" class="btn-secundario" style="padding: 4px 10px; font-size: 12px;" onclick="agendarEnHora('${hora}')">+ Agendar</button>
+        <strong style="font-size: 0.95rem; color: #334155;">⏰ ${hora} hrs</strong>
+        <span style="color: #10b981; font-size: 0.85rem; font-weight: 600;">🟢 Disponible</span>
+        <button type="button" class="btn-secundario" onclick="agendarEnHora('${hora}')">+ Agendar</button>
       `;
     }
 
