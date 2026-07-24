@@ -19,26 +19,20 @@ body:not(.autenticado) .app-header {
   display: none !important;
 }
 
-/* CONTROL DE VISIBILIDAD DE PESTAÑAS SEGÚN ROL */
-body.rol-peluqueria .solo-admin,
-body.rol-peluqueria .solo-vet,
-body.rol-peluqueria .solo-caja,
+/* CONTROL DE VISIBILIDAD SEGÚN ROL */
 body.rol-peluqueria #nav-btn-clinica,
 body.rol-peluqueria #nav-btn-inventario,
 body.rol-peluqueria #nav-btn-caja {
   display: none !important;
 }
 
-body.rol-veterinaria .solo-admin,
-body.rol-veterinaria .solo-peluqueria,
-body.rol-veterinaria .solo-caja,
 body.rol-veterinaria #nav-btn-peluqueria,
 body.rol-veterinaria #nav-btn-inventario,
 body.rol-veterinaria #nav-btn-caja {
   display: none !important;
 }
 
-/* ENCABEZADO */
+/* ENCABEZADO Y LOGO */
 .app-header {
   background-color: #008080;
   color: white;
@@ -50,7 +44,7 @@ body.rol-veterinaria #nav-btn-caja {
 }
 
 .logo-container { display: flex; align-items: center; gap: 12px; }
-.app-logo { height: 40px; border-radius: 6px; }
+.app-logo { height: 42px; width: 42px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.4); }
 .brand-text h1 { font-size: 1.4rem; margin: 0; }
 .sub-brand { font-size: 0.8rem; opacity: 0.85; }
 
@@ -68,9 +62,6 @@ button { border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; f
   background-color: #008080;
   color: white;
   border-radius: 4px;
-}
-.btn-agendar-mini:hover {
-  background-color: #005a5a;
 }
 
 /* MODAL LOGIN */
@@ -94,76 +85,31 @@ button { border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; f
 input, select, textarea { padding: 9px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
 input:focus, select:focus, textarea:focus { border-color: #008080; outline: none; }
 
-/* BANNER PACIENTE EN CLÍNICA */
-.info-banner {
-  background-color: #e0f2f1;
-  border-left: 4px solid #008080;
-  padding: 10px 14px;
-  border-radius: 4px;
-  margin-top: 10px;
-  font-size: 0.9rem;
-  color: #004d40;
-}
+/* TABLAS E INVENTARIO */
+.table-responsive { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; text-align: left; }
+.data-table th, .data-table td { padding: 12px; border-bottom: 1px solid #eee; }
+.data-table th { background-color: #f8f9fa; color: #555; font-size: 0.85rem; }
+.badge-cat { background-color: #e0f2f1; color: #004d40; padding: 3px 8px; border-radius: 10px; font-size: 0.8rem; }
 
-/* HISTORIAL CLÍNICO */
-.card-historial {
-  border-left: 3px solid #008080;
-  background: #f9f9f9;
-  padding: 12px 15px;
-  margin-bottom: 12px;
-  border-radius: 0 6px 6px 0;
-}
+/* PARRILLA AGENDA */
+.horarios-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 10px; }
+.bloque-hora { border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #e0e0e0; }
+.bloque-hora.disponible { background-color: #ffffff; border-color: #c8e6c9; color: #2e7d32; cursor: pointer; }
+.bloque-hora.ocupado { background-color: #ffebee; border-color: #ef9a9a; color: #c62828; }
+.bloque-hora.pasado { background-color: #f5f5f5; color: #9e9e9e; cursor: not-allowed; }
 
-/* PARRILLA DE HORARIOS Y AGENDA */
-.horarios-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
-  margin-top: 10px;
-}
+/* DISEÑO DE CAJA Y POS */
+.pos-container { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+@media (max-width: 850px) { .pos-container { grid-template-columns: 1fr; } }
 
-.bloque-hora {
-  border-radius: 8px;
-  padding: 12px;
-  text-align: center;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  border: 1px solid #e0e0e0;
-}
+.pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; max-height: 450px; overflow-y: auto; padding-right: 5px; }
+.pos-card-item { background: #fafafa; border: 1px solid #ddd; padding: 12px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; }
+.pos-card-item:hover { border-color: #008080; background: #e0f2f1; }
+.pos-item-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; }
+.pos-item-price { color: #008080; font-weight: bold; }
+.pos-item-stock { font-size: 0.75rem; color: #777; }
 
-.bloque-hora.disponible {
-  background-color: #ffffff;
-  border-color: #c8e6c9;
-  color: #2e7d32;
-  cursor: pointer;
-}
-
-.bloque-hora.disponible:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-  background-color: #f1f8e9;
-}
-
-.bloque-hora.ocupado {
-  background-color: #ffebee;
-  border-color: #ef9a9a;
-  color: #c62828;
-}
-
-.bloque-hora.pasado {
-  background-color: #f5f5f5;
-  border-color: #e0e0e0;
-  color: #9e9e9e;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.bloque-hora .hora-titulo {
-  font-size: 1.05rem;
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-
-.bloque-hora .info-cita {
-  font-size: 0.8rem;
-  line-height: 1.2;
-}
+.cart-items { max-height: 280px; overflow-y: auto; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
+.cart-item-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 0.85rem; }
+.summary-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
