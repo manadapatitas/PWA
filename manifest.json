@@ -3,12 +3,12 @@
   "name": "Manada Patitas - Gestión Veterinaria & Petshop",
   "icons": [
     {
-      "src": "https://manadapatitas.github.io/veterinaria/logo.png",
+      "src": "./icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "https://manadapatitas.github.io/veterinaria/logo.png",
+      "src": "./icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
