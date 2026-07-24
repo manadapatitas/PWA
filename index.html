@@ -4,16 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manada Patitas - Gestión Vet & Petshop</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <link rel="icon" type="image/png" href="./icon-192x192.png">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 
   <!-- ENCABEZADO -->
   <header class="app-header">
     <div class="logo-container">
-      <img src="https://manadapatitas.github.io/veterinaria/logo.png" alt="Manada Patitas" class="app-logo" onerror="this.style.display='none'">
+      <img src="./icon-192x192.png" alt="Manada Patitas" class="app-logo" onerror="this.style.display='none'">
       <div class="brand-text">
         <h1>Manada Patitas</h1>
         <span class="sub-brand">Gestión Vet & Petshop</span>
@@ -189,7 +189,7 @@
           </div>
 
           <!-- BANNER INFORMATIVO -->
-          <div id="cli-info-paciente" class="info-banner hidden" style="margin-top: 10px; background: #eef9f7; padding: 10px; border-radius: 6px;">
+          <div id="cli-info-paciente" class="info-banner hidden">
             <span>🐾 <strong>Mascota:</strong> <span id="lbl-cli-mascota">-</span></span> | 
             <span>🧬 <strong>Raza:</strong> <span id="lbl-cli-raza">-</span></span> | 
             <span>🎂 <strong>Edad:</strong> <span id="lbl-cli-edad">-</span></span>
@@ -219,6 +219,6 @@
     <section id="sec-caja" class="tab-content hidden"><div class="card"><h3>💳 POS / Caja</h3></div></section>
   </main>
 
-  <script src="app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
