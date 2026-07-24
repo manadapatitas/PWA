@@ -44,7 +44,7 @@
 
         <div class="form-group">
           <label for="login-pin">PIN de Acceso:</label>
-          <input type="password" id="login-pin" placeholder="Ingresa tu PIN (1234)" required>
+          <input type="password" id="login-pin" placeholder="Ingresa tu PIN" required>
         </div>
 
         <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Ingresar al Sistema</button>
@@ -52,7 +52,7 @@
     </div>
   </div>
 
-  <!-- NAVEGACIÓN -->
+  <!-- NAVEGACIÓN PRINCIPAL -->
   <main class="main-content">
     <nav class="nav-tabs">
       <button id="nav-btn-agenda" class="tab-btn active" onclick="cambiarPestana('agenda')">📅 Agenda & Citas</button>
@@ -244,7 +244,7 @@
       </div>
     </section>
 
-    <!-- INVENTARIO -->
+    <!-- INVENTARIO CON CÁLCULO DE NETO Y IVA EN TIEMPO REAL -->
     <section id="sec-inventario" class="tab-content hidden">
       <div class="card">
         <h3>📦 Nuevo Producto / Actualizar Stock</h3>
@@ -269,11 +269,11 @@
             </div>
             <div class="form-group">
               <label>Costo Neto/Compra ($)</label>
-              <input type="number" id="inv-costo" placeholder="Ej: 10000" oninput="calcularPrecioVentaSugerido()" required>
+              <input type="number" id="inv-costo" placeholder="Ej: 10000" required>
             </div>
             <div class="form-group">
               <label>Margen de Ganancia (%)</label>
-              <input type="number" id="inv-margen" placeholder="Ej: 30" value="30" oninput="calcularPrecioVentaSugerido()" required>
+              <input type="number" id="inv-margen" placeholder="Ej: 30" value="30" required>
             </div>
             <div class="form-group">
               <label>Precio Venta Final (Bruto $)</label>
