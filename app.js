@@ -1,246 +1,515 @@
-// ============================================================================
-// FRONTEND PWA - MANADA PATITAS (APP.JS COMPLETO)
-// ============================================================================
+// =================================================================
+// FRONTEND APP.JS - MANADA PATITAS PWA (INTEGRADO COMPLETO)
+// =================================================================
 
-const URL_BACKEND = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAATyuqBHUON3C17OW4SLBeRxoutLyYneHcFgfQ_Q4owqoGBCRESRclw/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAAyuqBHUON3C17OW4SLbeRxoutLyYneHcFGfQ_Q4OqwoGBCRESrcF/exec"; 
 
-let datosGlobales = {
-  tutores: [],
-  agenda: [],
-  clinica: []
+const CONFIG_ROLES = {
+  admin: { nombre: "Administrador / Dirección", pin: "1234", pestanaDefault: "agenda" },
+  veterinaria: { nombre: "Médico Veterinario", pin: "2026", pestanaDefault: "agenda" },
+  peluqueria: { nombre: "Estética y Peluquería", pin: "1000", pestanaDefault: "peluqueria" },
+  caja: { nombre: "Ventas y Recepción", pin: "2173", pestanaDefault: "agenda" }
 };
 
-document.addEventListener("DOMContentLoaded", function () {
-  comprobarSesion();
+let usuarioActual = null;
+let listaPacientesGlobal = [];
+let listaCitasGlobal = [];
+let listaClinicaGlobal = [];
+let listaPeluqueriaGlobal = [];
+let listaInventarioGlobal = [];
 
-  const inputFecha = document.getElementById("inputVerFecha");
-  if (inputFecha) {
-    inputFecha.value = obtenerFechaHoy();
-    inputFecha.addEventListener("change", renderizarAgendaBloques);
-  }
+document.addEventListener('DOMContentLoaded', () => {
+  inicializarAutenticacion();
+  configurarFechaPorDefecto();
+  mostrarModalLogin();
 });
 
-function comprobarSesion() {
-  const sessionRaw = localStorage.getItem("manada_session");
-  if (sessionRaw) {
-    try {
-      const session = JSON.parse(sessionRaw);
-      if (session && session.loggedIn) {
-        mostrarAplicacion(session.rol);
-        return;
-      }
-    } catch (e) {
-      console.error("Error sesión:", e);
-    }
+// -----------------------------------------------------------------
+// AUTENTICACIÓN Y ROLES
+// -----------------------------------------------------------------
+function inicializarAutenticacion() {
+  const formLogin = document.getElementById('form-login');
+  if (formLogin) {
+    formLogin.onsubmit = (e) => {
+      e.preventDefault();
+      procesarLogin();
+      return false;
+    };
   }
-  ocultarAplicacion();
 }
 
-function iniciarSesion(event) {
-  if (event) event.preventDefault();
+function procesarLogin() {
+  const inputPin = document.getElementById('login-pin');
+  const selectRol = document.getElementById('login-rol');
 
-  const selectRol = document.getElementById("selectRol");
-  const inputPin = document.getElementById("inputPin");
+  const pinIngresado = inputPin ? inputPin.value.trim() : "";
+  const rolClave = selectRol ? selectRol.value : "admin";
+  const rolInfo = CONFIG_ROLES[rolClave] || { pin: "1234", nombre: "Usuario", pestanaDefault: "agenda" };
 
-  const rol = selectRol ? selectRol.value : "Administrador";
-  const pin = inputPin ? inputPin.value.trim() : "";
+  if (pinIngresado === rolInfo.pin) {
+    usuarioActual = { rol: rolClave, nombre: rolInfo.nombre };
+    
+    const badgeRol = document.getElementById('usuario-badge');
+    if (badgeRol) badgeRol.innerText = usuarioActual.nombre;
 
-  if (pin.length < 1) {
-    alert("⚠️ Por favor ingresa tu PIN de acceso.");
+    document.body.className = `autenticado rol-${rolClave}`;
+    
+    cerrarModalLogin();
+    if (inputPin) inputPin.value = '';
+    
+    cargarDatosBackend().then(() => {
+      cambiarPestana(rolInfo.pestanaDefault);
+    });
+  } else {
+    alert("⚠️ PIN incorrecto. Revisa el PIN e intenta nuevamente.");
+    if (inputPin) {
+      inputPin.value = '';
+      inputPin.focus();
+    }
+  }
+}
+
+function cerrarModalLogin() {
+  const modal = document.getElementById('modal-login');
+  if (modal) modal.style.display = 'none';
+}
+
+function mostrarModalLogin() {
+  const modal = document.getElementById('modal-login');
+  if (modal) modal.style.display = 'flex';
+  document.body.className = '';
+}
+
+function cerrarSesion() {
+  usuarioActual = null;
+  const badgeRol = document.getElementById('usuario-badge');
+  if (badgeRol) badgeRol.innerText = "Invitado";
+  mostrarModalLogin();
+}
+
+function cambiarPinAcceso() {
+  const nuevoPin = prompt("Ingresa tu nuevo PIN de acceso:");
+  if (nuevoPin && usuarioActual) {
+    CONFIG_ROLES[usuarioActual.rol].pin = nuevoPin.trim();
+    alert("✅ PIN actualizado con éxito para esta sesión.");
+  }
+}
+
+// -----------------------------------------------------------------
+// NAVEGACIÓN
+// -----------------------------------------------------------------
+function cambiarPestana(idPestana) {
+  if (!usuarioActual) {
+    mostrarModalLogin();
     return;
   }
 
-  const sessionData = {
-    rol: rol,
-    loggedIn: true,
-    loginTime: new Date().getTime()
-  };
+  const secciones = document.querySelectorAll('.tab-content');
+  secciones.forEach(sec => {
+    sec.classList.add('hidden');
+    sec.classList.remove('active');
+  });
 
-  localStorage.setItem("manada_session", JSON.stringify(sessionData));
-  mostrarAplicacion(rol);
-}
+  const botones = document.querySelectorAll('.tab-btn');
+  botones.forEach(btn => btn.classList.remove('active'));
 
-window.procesarLogin = function (e) { iniciarSesion(e); };
+  const seccionObjetivo = document.getElementById(`sec-${idPestana}`);
+  const botonObjetivo = document.getElementById(`nav-btn-${idPestana}`);
 
-function cerrarSesion() {
-  localStorage.removeItem("manada_session");
-  location.reload();
-}
-
-function mostrarAplicacion(rol) {
-  document.getElementById("pantallaLogin").style.display = "none";
-  document.getElementById("appMain").style.display = "block";
-  document.getElementById("labelRolUsuario").textContent = rol;
-  cargarDatosBackend();
-}
-
-function ocultarAplicacion() {
-  document.getElementById("pantallaLogin").style.display = "flex";
-  document.getElementById("appMain").style.display = "none";
-}
-
-function cambiarSeccion(nombreSeccion) {
-  document.querySelectorAll(".seccion-app").forEach(sec => sec.style.display = "none");
-  document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
-
-  const seccion = document.getElementById(`seccion-${nombreSeccion}`);
-  if (seccion) seccion.style.display = "block";
-
-  if (event && event.target) event.target.classList.add("active");
-}
-
-function cargarDatosBackend() {
-  fetch(`${URL_BACKEND}?action=obtenerTodo`)
-    .then(res => res.json())
-    .then(data => {
-      if (data) {
-        datosGlobales.tutores = data.tutores || [];
-        datosGlobales.agenda = data.agenda || [];
-        datosGlobales.clinica = data.clinica || [];
-
-        poblarDesplegableTutoresModal();
-        renderizarAgendaBloques();
-      }
-    })
-    .catch(err => {
-      console.error("Error al conectar con backend:", err);
-      renderizarAgendaBloques();
-    });
-}
-
-function renderizarAgendaBloques() {
-  const contenedor = document.getElementById("contenedorBloquesAgenda");
-  if (!contenedor) return;
-
-  contenedor.innerHTML = "";
-  const fechaSeleccionada = document.getElementById("inputVerFecha") ? document.getElementById("inputVerFecha").value : obtenerFechaHoy();
-
-  const horas = [];
-  for (let h = 9; h <= 19; h++) {
-    const hh = h < 10 ? `0${h}` : `${h}`;
-    horas.push(`${hh}:00`);
-    horas.push(`${hh}:30`);
+  if (seccionObjetivo) {
+    seccionObjetivo.classList.remove('hidden');
+    seccionObjetivo.classList.add('active');
   }
 
-  const citasDelDia = datosGlobales.agenda.filter(cita => String(cita.Fecha_Hora || cita.fecha).includes(fechaSeleccionada) && cita.Estado !== "Cancelado");
+  if (botonObjetivo) {
+    botonObjetivo.classList.add('active');
+  }
 
-  horas.forEach(hora => {
-    const cita = citasDelDia.find(c => String(c.Fecha_Hora || c.hora).includes(hora));
+  if (idPestana === 'agenda') {
+    renderizarParrillaAgenda();
+  }
+}
 
-    const divBloque = document.createElement("div");
-    
-    if (cita) {
-      divBloque.className = "bloque-horario bloque-reservado";
-      divBloque.innerHTML = `
-        <strong style="font-size: 0.95rem;">⏰ ${hora} hrs</strong>
-        <span style="font-weight: 600;">🐾 ${cita.Mascota || cita.paciente || "Mascota"} <small style="font-weight: 400; opacity: 0.8;">(${cita.Tutor || cita.tutor || "Tutor"})</small></span>
-        <span style="background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">RESERVADO</span>
-      `;
-    } else {
-      divBloque.className = "bloque-horario";
-      divBloque.innerHTML = `
-        <strong style="font-size: 0.95rem; color: #334155;">⏰ ${hora} hrs</strong>
-        <span style="color: #10b981; font-size: 0.85rem; font-weight: 600;">🟢 Disponible</span>
-        <button type="button" class="btn-secundario" onclick="agendarEnHora('${hora}')">+ Agendar</button>
-      `;
+function configurarFechaPorDefecto() {
+  const hoy = new Date().toISOString().split('T')[0];
+  const inputFiltro = document.getElementById('filtro-fecha-agenda');
+  if (inputFiltro) inputFiltro.value = hoy;
+}
+
+// -----------------------------------------------------------------
+// BACKEND GOOGLE SHEETS
+// -----------------------------------------------------------------
+async function cargarDatosBackend() {
+  try {
+    const res = await fetch(URL_WEB_APP, {
+      method: 'POST',
+      body: JSON.stringify({ accion: "obtenerTodo" })
+    });
+    const textoRespuesta = await res.text();
+    let data;
+    try {
+      data = JSON.parse(textoRespuesta);
+    } catch (e) {
+      console.error("Respuesta no válida del servidor:", textoRespuesta);
+      return;
     }
 
-    contenedor.appendChild(divBloque);
-  });
-}
+    listaPacientesGlobal = data.tutores || data.pacientes || [];
+    listaCitasGlobal = data.agenda || data.citas || [];
+    listaClinicaGlobal = data.clinica || [];
+    listaPeluqueriaGlobal = data.peluqueria || [];
+    listaInventarioGlobal = data.inventario || [];
 
-// ----------------------------------------------------------------------------
-// MODAL DE AGENDAMIENTO
-// ----------------------------------------------------------------------------
-let horaSeleccionadaModal = "";
-
-function agendarEnHora(hora) {
-  horaSeleccionadaModal = hora;
-  const fecha = document.getElementById("inputVerFecha").value;
-  document.getElementById("modalFechaHora").value = `${fecha} ${hora}`;
-  document.getElementById("modalAgendar").style.display = "flex";
-}
-
-function cerrarModal() {
-  document.getElementById("modalAgendar").style.display = "none";
-}
-
-function poblarDesplegableTutoresModal() {
-  const selectTutor = document.getElementById("selectTutorModal");
-  if (!selectTutor) return;
-
-  selectTutor.innerHTML = '<option value="">-- Selecciona un Tutor --</option>';
-  datosGlobales.tutores.forEach(t => {
-    const opt = document.createElement("option");
-    opt.value = t.Nombre || t.RUT;
-    opt.textContent = `${t.Nombre} (${t.RUT || "S/RUT"})`;
-    opt.dataset.mascota = t.Mascota || "";
-    selectTutor.appendChild(opt);
-  });
-}
-
-function alSeleccionarTutorModal() {
-  const selectTutor = document.getElementById("selectTutorModal");
-  const selectMascota = document.getElementById("selectMascotaModal");
-  if (!selectTutor || !selectMascota) return;
-
-  const opt = selectTutor.options[selectTutor.selectedIndex];
-  selectMascota.innerHTML = '<option value="">-- Selecciona Mascota --</option>';
-
-  if (opt && opt.dataset.mascota) {
-    const optM = document.createElement("option");
-    optM.value = opt.dataset.mascota;
-    optM.textContent = opt.dataset.mascota;
-    selectMascota.appendChild(optM);
-    selectMascota.value = opt.dataset.mascota;
+    poblarCombosTutores();
+    renderizarParrillaAgenda();
+    cargarDatosMascotaSeleccionada();
+  } catch (err) {
+    console.error("Error cargando datos del backend:", err);
   }
 }
 
-async function guardarCitaModal(e) {
+async function enviarFormularioBackend(action, payload) {
+  const bodyData = { accion: action, ...payload };
+  const res = await fetch(URL_WEB_APP, {
+    method: 'POST',
+    body: JSON.stringify(bodyData)
+  });
+  const json = await res.json();
+  if (json.status === "error") throw new Error(json.message);
+  return json;
+}
+
+function formatearRutChile(rutRaw) {
+  if (!rutRaw) return '';
+  let str = rutRaw.toString().replace(/[^0-9kK]/g, '').toUpperCase();
+  if (str.length <= 1) return str;
+  return str.slice(0, -1) + '-' + str.slice(-1);
+}
+
+function limpiarRutStr(rutStr) {
+  if (!rutStr) return '';
+  return rutStr.toString().replace(/[^0-9kK]/g, '').toUpperCase();
+}
+
+function formatearInputRut(input) {
+  if (input) input.value = formatearRutChile(input.value);
+}
+
+// -----------------------------------------------------------------
+// AGENDA Y COMBOS
+// -----------------------------------------------------------------
+function poblarCombosTutores() {
+  const selectsTutor = [
+    document.getElementById('age-select-tutor'),
+    document.getElementById('cli-select-tutor')
+  ];
+
+  const tutoresMap = new Map();
+  listaPacientesGlobal.forEach(p => {
+    const r = formatearRutChile(p.rut || p.RUT);
+    const n = p.nombre || p.Nombre || p.tutor || 'Sin Nombre';
+    if (r && !tutoresMap.has(r)) tutoresMap.set(r, n);
+  });
+
+  selectsTutor.forEach(select => {
+    if (!select) return;
+    const valPrevio = select.value;
+    select.innerHTML = '<option value="">-- Selecciona un Tutor --</option>';
+    tutoresMap.forEach((nombre, rut) => {
+      select.innerHTML += `<option value="${rut}">${nombre} (${rut})</option>`;
+    });
+    select.value = valPrevio;
+  });
+}
+
+function actualizarMascotasAgenda() {
+  const rutSeleccionado = document.getElementById('age-select-tutor').value;
+  const selectMascota = document.getElementById('age-select-mascota');
+  if (!selectMascota) return;
+
+  if (!rutSeleccionado) {
+    selectMascota.innerHTML = '<option value="">-- Selecciona primero un Tutor --</option>';
+    selectMascota.disabled = true;
+    return;
+  }
+
+  const mascotasTutor = listaPacientesGlobal.filter(p => formatearRutChile(p.rut || p.RUT) === rutSeleccionado);
+  selectMascota.innerHTML = '<option value="">-- Selecciona una Mascota --</option>';
+  mascotasTutor.forEach(p => {
+    const nombre = p.mascota || p.Mascota || 'Mascota';
+    selectMascota.innerHTML += `<option value="${nombre}">${nombre}</option>`;
+  });
+  selectMascota.disabled = false;
+}
+
+function normalizarFechaHoraCita(rawStr) {
+  if (!rawStr) return "";
+  
+  if (rawStr instanceof Date) {
+    const yyyy = rawStr.getFullYear();
+    const mm = String(rawStr.getMonth() + 1).padStart(2, '0');
+    const dd = String(rawStr.getDate()).padStart(2, '0');
+    const hh = String(rawStr.getHours()).padStart(2, '0');
+    const min = String(rawStr.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  }
+
+  let s = rawStr.toString().trim();
+  
+  if (s.includes('T')) {
+    const partes = s.split('T');
+    const fecha = partes[0];
+    const hora = partes[1] ? partes[1].substring(0, 5) : "00:00";
+    return `${fecha} ${hora}`;
+  }
+  
+  return s.substring(0, 16);
+}
+
+function renderizarParrillaAgenda() {
+  const contenedor = document.getElementById('grid-horarios');
+  const fechaSeleccionada = document.getElementById('filtro-fecha-agenda') ? document.getElementById('filtro-fecha-agenda').value : '';
+  if (!contenedor || !fechaSeleccionada) return;
+
+  contenedor.innerHTML = '';
+  const horasJornada = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00"];
+
+  const ahora = new Date();
+  const fechaHoyStr = ahora.toISOString().split('T')[0];
+  const horaActualStr = ahora.toTimeString().substring(0, 5);
+
+  horasJornada.forEach(hora => {
+    const claveBloque = `${fechaSeleccionada} ${hora}`;
+    
+    const cita = listaCitasGlobal.find(c => {
+      const rawFechaCita = c.fecha_hora || c.Fecha_Hora || c.fecha || c.Fecha || '';
+      return normalizarFechaHoraCita(rawFechaCita) === claveBloque;
+    });
+
+    const div = document.createElement('div');
+    const esPasado = (fechaSeleccionada === fechaHoyStr && hora < horaActualStr);
+
+    if (cita) {
+      div.className = 'bloque-hora ocupado';
+      const nomMascota = cita.mascota || cita.Mascota || 'Reservado';
+      const nomServicio = cita.servicio || cita.Servicio || 'Atención';
+      div.innerHTML = `<div class="hora-titulo">🕒 ${hora}</div><div class="info-cita"><strong>🐾 ${nomMascota}</strong><br><small>${nomServicio}</small></div>`;
+    } else if (esPasado) {
+      div.className = 'bloque-hora pasado';
+      div.innerHTML = `<div class="hora-titulo">🕒 ${hora}</div><div class="info-cita">⛔ Pasado</div>`;
+    } else {
+      div.className = 'bloque-hora disponible';
+      div.innerHTML = `<div class="hora-titulo">🕒 ${hora}</div><div class="info-cita">🟢 Disponible</div><button class="btn-agendar-mini" style="margin-top: 5px; font-size: 0.75rem; padding: 2px 6px;">+ Agendar</button>`;
+      div.onclick = () => seleccionarHorarioDisponible(fechaSeleccionada, hora);
+    }
+    contenedor.appendChild(div);
+  });
+}
+
+function seleccionarHorarioDisponible(fecha, hora) {
+  const datetimeInput = document.getElementById('agenda-fecha');
+  if (datetimeInput) {
+    datetimeInput.value = `${fecha} ${hora}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+async function guardarCita(e) {
   if (e) e.preventDefault();
+  const selectTutor = document.getElementById('age-select-tutor');
+  const selectMascota = document.getElementById('age-select-mascota');
+  const fechaInput = document.getElementById('agenda-fecha').value;
 
-  const fechaHora = document.getElementById("modalFechaHora").value;
-  const tutor = document.getElementById("selectTutorModal").value;
-  const mascota = document.getElementById("selectMascotaModal").value;
-  const servicio = document.getElementById("selectServicioModal").value;
+  if (!selectTutor.value || !selectMascota.value || !fechaInput) {
+    alert("Por favor completa los datos de la cita y elige un horario.");
+    return;
+  }
 
-  if (!tutor || !mascota) {
-    alert("⚠️ Selecciona el tutor y la mascota.");
+  const fechaHoraNormalizada = normalizarFechaHoraCita(fechaInput);
+  const yaOcupado = listaCitasGlobal.some(c => {
+    const raw = c.fecha_hora || c.Fecha_Hora || c.fecha || c.Fecha || '';
+    return normalizarFechaHoraCita(raw) === fechaHoraNormalizada;
+  });
+
+  if (yaOcupado) {
+    alert("⚠️ Este horario ya se encuentra reservado. Selecciona otro bloque disponible.");
+    await cargarDatosBackend();
     return;
   }
 
   const payload = {
-    accion: "guardarCita",
-    fecha: fechaHora,
-    mascota: mascota,
-    tutor: tutor,
-    servicio: servicio
+    fecha: fechaInput,
+    mascota: selectMascota.value,
+    tutor: selectTutor.options[selectTutor.selectedIndex].text,
+    servicio: document.getElementById('agenda-servicio').value
   };
 
   try {
-    const res = await fetch(URL_BACKEND, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-
-    if (data.status === "success") {
-      alert("📅 Cita agendada exitosamente.");
-      cerrarModal();
-      cargarDatosBackend();
-    } else {
-      alert("⚠️ " + (data.message || "Error al guardar la cita."));
-    }
+    const json = await enviarFormularioBackend('guardarCita', payload);
+    alert('📅 ' + json.message);
+    document.getElementById('form-agenda').reset();
+    actualizarMascotasAgenda();
+    await cargarDatosBackend();
   } catch (err) {
-    alert("❌ Error de comunicación con la base de datos.");
-    console.error(err);
+    alert('⚠️ No se pudo reservar: ' + err.message);
+    await cargarDatosBackend();
   }
 }
 
-function obtenerFechaHoy() {
-  const hoy = new Date();
-  const yyyy = hoy.getFullYear();
-  const mm = String(hoy.getMonth() + 1).padStart(2, '0');
-  const dd = String(hoy.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+// -----------------------------------------------------------------
+// PACIENTES Y TUTORES
+// -----------------------------------------------------------------
+async function guardarTutor(e) {
+  if (e) e.preventDefault();
+  const rut = document.getElementById('tut-rut').value;
+  const nombre = document.getElementById('tut-nombre').value;
+  const telefono = document.getElementById('tut-telefono').value;
+  const mascota = document.getElementById('tut-mascota').value;
+  const raza = document.getElementById('tut-raza').value;
+  const edad = document.getElementById('tut-edad').value;
+  const peso = document.getElementById('tut-peso').value;
+
+  const payload = { rut, nombre, telefono, mascota, raza, edad, peso };
+
+  try {
+    await enviarFormularioBackend('guardarTutor', payload);
+    alert('🐾 Paciente y Tutor guardados con éxito.');
+    document.getElementById('form-tutor').reset();
+    await cargarDatosBackend();
+  } catch (err) {
+    alert('Error al guardar tutor: ' + err.message);
+  }
+}
+
+// -----------------------------------------------------------------
+// CONSULTA CLÍNICA
+// -----------------------------------------------------------------
+function actualizarMascotasClinica() {
+  const rutSeleccionado = document.getElementById('cli-select-tutor').value;
+  const selectMascota = document.getElementById('cli-select-mascota');
+  if (!selectMascota) return;
+
+  if (!rutSeleccionado) {
+    selectMascota.innerHTML = '<option value="">-- Selecciona primero un Tutor --</option>';
+    selectMascota.disabled = true;
+    limpiarHistorialClinicoPaciente();
+    return;
+  }
+
+  const mascotasTutor = listaPacientesGlobal.filter(p => formatearRutChile(p.rut || p.RUT) === rutSeleccionado);
+  selectMascota.innerHTML = '<option value="">-- Selecciona una Mascota --</option>';
+  mascotasTutor.forEach(p => {
+    const nombre = p.mascota || p.Mascota || 'Mascota';
+    selectMascota.innerHTML += `<option value="${nombre}">${nombre}</option>`;
+  });
+  selectMascota.disabled = false;
+  limpiarHistorialClinicoPaciente();
+}
+
+function cargarDatosMascotaSeleccionada() {
+  const rutSeleccionado = document.getElementById('cli-select-tutor').value;
+  const mascotaNombre = document.getElementById('cli-select-mascota').value;
+  const banner = document.getElementById('cli-info-paciente');
+
+  if (!rutSeleccionado || !mascotaNombre) {
+    if (banner) banner.classList.add('hidden');
+    limpiarHistorialClinicoPaciente();
+    return;
+  }
+
+  const registro = listaPacientesGlobal.find(p => 
+    formatearRutChile(p.rut || p.RUT) === rutSeleccionado && 
+    (p.mascota || p.Mascota || '').toString().trim().toLowerCase() === mascotaNombre.trim().toLowerCase()
+  );
+
+  if (registro && banner) {
+    document.getElementById('lbl-cli-mascota').innerText = registro.mascota || registro.Mascota || '-';
+    document.getElementById('lbl-cli-raza').innerText = registro.raza || registro.Raza || '-';
+    document.getElementById('lbl-cli-edad').innerText = registro.edad || registro.Edad || '-';
+    banner.classList.remove('hidden');
+  }
+
+  renderizarHistorialClinicoPaciente(rutSeleccionado, mascotaNombre);
+}
+
+function limpiarHistorialClinicoPaciente() {
+  const contenedor = document.getElementById('contenedor-historial-clinico');
+  if (contenedor) {
+    contenedor.innerHTML = '<p style="color:#777;">Selecciona un tutor y una mascota para ver su historial médico particular.</p>';
+  }
+}
+
+async function guardarAtencionClinica(e) {
+  if (e) e.preventDefault();
+  const selectTutor = document.getElementById('cli-select-tutor');
+  const selectMascota = document.getElementById('cli-select-mascota');
+
+  if (!selectTutor.value || !selectMascota.value) {
+    alert("Debes seleccionar un tutor y una mascota antes de guardar la ficha.");
+    return;
+  }
+
+  const payload = {
+    rut_tutor: selectTutor.value,
+    nombre_tutor: selectTutor.options[selectTutor.selectedIndex].text,
+    mascota: selectMascota.value,
+    temperatura: document.getElementById('cli-temp').value,
+    peso: document.getElementById('cli-peso').value,
+    diagnostico: document.getElementById('cli-diagnostico').value,
+    receta: document.getElementById('cli-receta').value
+  };
+
+  try {
+    await enviarFormularioBackend('guardarAtencionClinica', payload);
+    alert('🩺 Consulta clínica registrada con éxito.');
+    document.getElementById('form-clinica').reset();
+    document.getElementById('cli-info-paciente').classList.add('hidden');
+    await cargarDatosBackend();
+    cargarDatosMascotaSeleccionada();
+  } catch (err) {
+    alert('Error al guardar atención: ' + err);
+  }
+}
+
+function renderizarHistorialClinicoPaciente(rutTutor, nombreMascota) {
+  const contenedor = document.getElementById('contenedor-historial-clinico');
+  if (!contenedor) return;
+
+  contenedor.innerHTML = '';
+  const rutLimpioSeleccionado = limpiarRutStr(rutTutor);
+
+  const atencionesMascota = listaClinicaGlobal.filter(c => {
+    const rawRutC = c.Rut_Tutor || c.rut_tutor || c.RUT_Tutor || '';
+    const rutCLLimpio = limpiarRutStr(rawRutC);
+    const mascotaC = (c.Mascota || c.mascota || '').toString().trim().toLowerCase();
+    
+    const matchRut = rutCLLimpio.includes(rutLimpioSeleccionado) || rutLimpioSeleccionado.includes(rutCLLimpio);
+    const matchMascota = mascotaC === nombreMascota.trim().toLowerCase();
+
+    return matchRut && matchMascota;
+  });
+
+  if (atencionesMascota.length === 0) {
+    contenedor.innerHTML = '<p style="color:#777;">Este paciente no registra consultas médicas anteriores.</p>';
+    return;
+  }
+
+  [...atencionesMascota].reverse().forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'card-historial';
+    const fechaAtencion = c.Fecha || c.fecha || '-';
+    const tempAtencion = c.Temperatura || c.temperatura || '-';
+    const pesoAtencion = c.Peso || c.peso || '-';
+    const diagAtencion = c.Diagnostico || c.diagnostico || '-';
+    const recAtencion = c.Receta || c.receta || '-';
+    const mascotaAtencion = c.Mascota || c.mascota || nombreMascota;
+
+    card.innerHTML = `
+      <div style="font-size:0.85rem; color:#666;">📅 ${fechaAtencion} | 🐾 <strong>${mascotaAtencion}</strong></div>
+      <div><strong>🌡️ Temp:</strong> ${tempAtencion} °C | <strong>⚖️ Peso:</strong> ${pesoAtencion} kg</div>
+      <div><strong>🩺 Diagnóstico:</strong> ${diagAtencion}</div>
+      <div><strong>💊 Tratamiento / Receta:</strong> ${recAtencion}</div>
+    `;
+    contenedor.appendChild(card);
+  });
 }
