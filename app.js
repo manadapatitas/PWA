@@ -1,5 +1,5 @@
 // =================================================================
-// FRONTEND APP.JS - MANADA PATITAS PWA (INTEGRADO COMPLETO + POS + INVENTARIO)
+// FRONTEND APP.JS - MANADA PATITAS PWA (INTEGRADO COMPLETO)
 // =================================================================
 
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAAyuqBHUON3C17OW4SLbeRxoutLyYneHcFGfQ_Q4OqwoGBCRESrcF/exec"; 
@@ -159,8 +159,8 @@ async function cargarDatosBackend() {
       return;
     }
 
-    listaPacientesGlobal = data.tutores || data.pacientes || [];
-    listaCitasGlobal = data.agenda || data.citas || [];
+    listaPacientesGlobal = data.tutores || [];
+    listaCitasGlobal = data.agenda || [];
     listaClinicaGlobal = data.clinica || [];
     listaPeluqueriaGlobal = data.peluqueria || [];
     listaInventarioGlobal = data.inventario || [];
@@ -213,8 +213,8 @@ function poblarCombosTutores() {
 
   const tutoresMap = new Map();
   listaPacientesGlobal.forEach(p => {
-    const r = formatearRutChile(p.rut || p.RUT);
-    const n = p.nombre || p.Nombre || p.tutor || 'Sin Nombre';
+    const r = formatearRutChile(p.rut);
+    const n = p.nombre || p.tutor || 'Sin Nombre';
     if (r && !tutoresMap.has(r)) tutoresMap.set(r, n);
   });
 
@@ -243,10 +243,10 @@ function actualizarMascotasAgenda() {
     return;
   }
 
-  const mascotasTutor = listaPacientesGlobal.filter(p => formatearRutChile(p.rut || p.RUT) === rutSeleccionado);
+  const mascotasTutor = listaPacientesGlobal.filter(p => formatearRutChile(p.rut) === rutSeleccionado);
   selectMascota.innerHTML = '<option value="">-- Selecciona una Mascota --</option>';
   mascotasTutor.forEach(p => {
-    const nombre = p.mascota || p.Mascota || 'Mascota';
+    const nombre = p.mascota || 'Mascota';
     selectMascota.innerHTML += `<option value="${nombre}">${nombre}</option>`;
   });
   selectMascota.disabled = false;
@@ -287,7 +287,7 @@ function renderizarParrillaAgenda() {
   horasJornada.forEach(hora => {
     const claveBloque = `${fechaSeleccionada} ${hora}`;
     const cita = listaCitasGlobal.find(c => {
-      const rawFechaCita = c.fecha_hora || c.Fecha_Hora || c.fecha || c.Fecha || '';
+      const rawFechaCita = c.fecha_hora || c.fecha || '';
       return normalizarFechaHoraCita(rawFechaCita) === claveBloque;
     });
 
@@ -296,8 +296,8 @@ function renderizarParrillaAgenda() {
 
     if (cita) {
       div.className = 'bloque-hora ocupado';
-      const nomMascota = cita.mascota || cita.Mascota || 'Reservado';
-      const nomServicio = cita.servicio || cita.Servicio || 'Atención';
+      const nomMascota = cita.mascota || 'Reservado';
+      const nomServicio = cita.servicio || 'Atención';
       div.innerHTML = `<div class="hora-titulo">🕒 ${hora}</div><div class="info-cita"><strong>🐾 ${nomMascota}</strong><br><small>${nomServicio}</small></div>`;
     } else if (esPasado) {
       div.className = 'bloque-hora pasado';
@@ -387,10 +387,10 @@ function actualizarMascotasClinica() {
     return;
   }
 
-  const mascotasTutor = listaPacientesGlobal.filter(p => formatearRutChile(p.rut || p.RUT) === rutSeleccionado);
+  const mascotasTutor = listaPacientesGlobal.filter(p => formatearRutChile(p.rut) === rutSeleccionado);
   selectMascota.innerHTML = '<option value="">-- Selecciona una Mascota --</option>';
   mascotasTutor.forEach(p => {
-    const nombre = p.mascota || p.Mascota || 'Mascota';
+    const nombre = p.mascota || 'Mascota';
     selectMascota.innerHTML += `<option value="${nombre}">${nombre}</option>`;
   });
   selectMascota.disabled = false;
@@ -407,14 +407,14 @@ function cargarDatosMascotaSeleccionada() {
   }
 
   const registro = listaPacientesGlobal.find(p => 
-    formatearRutChile(p.rut || p.RUT) === rutSeleccionado && 
-    (p.mascota || p.Mascota || '').toString().trim().toLowerCase() === mascotaNombre.trim().toLowerCase()
+    formatearRutChile(p.rut) === rutSeleccionado && 
+    (p.mascota || '').toString().trim().toLowerCase() === mascotaNombre.trim().toLowerCase()
   );
 
   if (registro && banner) {
-    document.getElementById('lbl-cli-mascota').innerText = registro.mascota || registro.Mascota || '-';
-    document.getElementById('lbl-cli-raza').innerText = registro.raza || registro.Raza || '-';
-    document.getElementById('lbl-cli-edad').innerText = registro.edad || registro.Edad || '-';
+    document.getElementById('lbl-cli-mascota').innerText = registro.mascota || '-';
+    document.getElementById('lbl-cli-raza').innerText = registro.raza || '-';
+    document.getElementById('lbl-cli-edad').innerText = registro.edad || '-';
     banner.classList.remove('hidden');
   }
 
@@ -429,9 +429,9 @@ function renderizarHistorialClinicoPaciente(rutTutor, nombreMascota) {
   const rutLimpioSeleccionado = limpiarRutStr(rutTutor);
 
   const atencionesMascota = listaClinicaGlobal.filter(c => {
-    const rawRutC = c.Rut_Tutor || c.rut_tutor || c.RUT_Tutor || '';
+    const rawRutC = c.rut_tutor || '';
     const rutCLLimpio = limpiarRutStr(rawRutC);
-    const mascotaC = (c.Mascota || c.mascota || '').toString().trim().toLowerCase();
+    const mascotaC = (c.mascota || '').toString().trim().toLowerCase();
     return (rutCLLimpio.includes(rutLimpioSeleccionado) || rutLimpioSeleccionado.includes(rutCLLimpio)) && mascotaC === nombreMascota.trim().toLowerCase();
   });
 
@@ -444,10 +444,10 @@ function renderizarHistorialClinicoPaciente(rutTutor, nombreMascota) {
     const card = document.createElement('div');
     card.className = 'card-historial';
     card.innerHTML = `
-      <div style="font-size:0.85rem; color:#666;">📅 ${c.Fecha || c.fecha || '-'} | 🐾 <strong>${c.Mascota || c.mascota || nombreMascota}</strong></div>
-      <div><strong>🌡️ Temp:</strong> ${c.Temperatura || c.temperatura || '-'} °C | <strong>⚖️ Peso:</strong> ${c.Peso || c.peso || '-'} kg</div>
-      <div><strong>🩺 Diagnóstico:</strong> ${c.Diagnostico || c.diagnostico || '-'}</div>
-      <div><strong>💊 Tratamiento / Receta:</strong> ${c.Receta || c.receta || '-'}</div>
+      <div style="font-size:0.85rem; color:#666;">📅 ${c.fecha || '-'} | 🐾 <strong>${c.mascota || nombreMascota}</strong></div>
+      <div><strong>🌡️ Temp:</strong> ${c.temperatura || '-'} °C | <strong>⚖️ Peso:</strong> ${c.peso || '-'} kg</div>
+      <div><strong>🩺 Diagnóstico:</strong> ${c.diagnostico || '-'}</div>
+      <div><strong>💊 Tratamiento / Receta:</strong> ${c.receta || '-'}</div>
     `;
     contenedor.appendChild(card);
   });
@@ -498,10 +498,10 @@ function actualizarMascotasPeluqueria() {
     return;
   }
 
-  const mascotasTutor = listaPacientesGlobal.filter(p => formatearRutChile(p.rut || p.RUT) === rutSeleccionado);
+  const mascotasTutor = listaPacientesGlobal.filter(p => formatearRutChile(p.rut) === rutSeleccionado);
   selectMascota.innerHTML = '<option value="">-- Selecciona una Mascota --</option>';
   mascotasTutor.forEach(p => {
-    const nombre = p.mascota || p.Mascota || 'Mascota';
+    const nombre = p.mascota || 'Mascota';
     selectMascota.innerHTML += `<option value="${nombre}">${nombre}</option>`;
   });
   selectMascota.disabled = false;
@@ -532,31 +532,44 @@ async function guardarPeluqueria(e) {
 }
 
 // -----------------------------------------------------------------
-// INVENTARIO
+// INVENTARIO CON MARGEN DE GANANCIA
 // -----------------------------------------------------------------
+function calcularPrecioVentaSugerido() {
+  const costo = parseFloat(document.getElementById('inv-costo').value) || 0;
+  const margen = parseFloat(document.getElementById('inv-margen').value) || 0;
+  if (costo > 0) {
+    const precioSugerido = Math.round(costo * (1 + (margen / 100)));
+    document.getElementById('inv-precio').value = precioSugerido;
+  }
+}
+
 function renderizarTablaInventario() {
   const tbody = document.getElementById('tabla-inventario-body');
   if (!tbody) return;
 
   if (listaInventarioGlobal.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#777;">No hay productos registrados en el inventario.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#777;">No hay productos registrados en el inventario.</td></tr>';
     return;
   }
 
   tbody.innerHTML = '';
   listaInventarioGlobal.forEach(p => {
     const tr = document.createElement('tr');
-    const codigo = p.codigo || p.Codigo || p.sku || '-';
-    const nombre = p.nombre || p.Nombre || p.producto || '-';
-    const categoria = p.categoria || p.Categoria || 'General';
-    const precio = Number(p.precio || p.Precio || 0).toLocaleString('es-CL');
-    const stock = p.stock || p.Stock || 0;
+    const codigo = p.sku || p.codigo || '-';
+    const nombre = p.nombre || '-';
+    const categoria = p.categoria || 'General';
+    const costo = Number(p.costo || 0).toLocaleString('es-CL');
+    const margen = (p.margen_pct !== undefined && p.margen_pct !== null) ? p.margen_pct : 0;
+    const precio = Number(p.precio_venta || p.precio || 0).toLocaleString('es-CL');
+    const stock = p.stock || 0;
 
     tr.innerHTML = `
       <td><code>${codigo}</code></td>
       <td><strong>${nombre}</strong></td>
       <td><span class="badge-cat">${categoria}</span></td>
-      <td>$${precio}</td>
+      <td>$${costo}</td>
+      <td>${margen}%</td>
+      <td><strong>$${precio}</strong></td>
       <td><strong style="color: ${stock <= 3 ? '#e74c3c' : '#2e7d32'}">${stock} u.</strong></td>
     `;
     tbody.appendChild(tr);
@@ -565,18 +578,23 @@ function renderizarTablaInventario() {
 
 async function guardarProducto(e) {
   if (e) e.preventDefault();
+
   const payload = {
     codigo: document.getElementById('inv-codigo').value,
     nombre: document.getElementById('inv-nombre').value,
     categoria: document.getElementById('inv-categoria').value,
+    costo: document.getElementById('inv-costo').value,
+    margen_pct: document.getElementById('inv-margen').value,
     precio: document.getElementById('inv-precio').value,
-    stock: document.getElementById('inv-stock').value
+    stock: document.getElementById('inv-stock').value,
+    stock_critico: 2
   };
 
   try {
-    await enviarFormularioBackend('guardarProducto', payload);
-    alert('📦 Producto actualizado correctamente.');
+    const json = await enviarFormularioBackend('guardarProducto', payload);
+    alert('📦 ' + json.message);
     document.getElementById('form-inventario').reset();
+    document.getElementById('inv-margen').value = "30";
     await cargarDatosBackend();
   } catch (err) {
     alert('Error al guardar producto: ' + err.message);
@@ -600,8 +618,8 @@ function filtrarProductosPOS() {
   contenedor.innerHTML = '';
 
   const productosFiltrados = listaInventarioGlobal.filter(p => {
-    const nom = (p.nombre || p.Nombre || '').toLowerCase();
-    const cod = (p.codigo || p.Codigo || '').toLowerCase();
+    const nom = (p.nombre || '').toLowerCase();
+    const cod = (p.sku || p.codigo || '').toLowerCase();
     return nom.includes(termino) || cod.includes(termino);
   });
 
@@ -613,10 +631,10 @@ function filtrarProductosPOS() {
   productosFiltrados.forEach(p => {
     const card = document.createElement('div');
     card.className = 'pos-card-item';
-    const nombre = p.nombre || p.Nombre || 'Producto';
-    const precio = Number(p.precio || p.Precio || 0);
-    const stock = Number(p.stock || p.Stock || 0);
-    const codigo = p.codigo || p.Codigo || '';
+    const nombre = p.nombre || 'Producto';
+    const precio = Number(p.precio_venta || p.precio || 0);
+    const stock = Number(p.stock || 0);
+    const codigo = p.sku || p.codigo || '';
 
     card.innerHTML = `
       <div class="pos-item-title">${nombre}</div>
