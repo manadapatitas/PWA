@@ -31,14 +31,15 @@ function inicializarAutenticacion() {
   const formLogin = document.getElementById('form-login');
   if (formLogin) {
     formLogin.onsubmit = (e) => {
-      e.preventDefault(); // Evita que se recargue la página y aparezca el '?' en la URL
+      e.preventDefault();
       procesarLogin();
       return false;
     };
   }
 }
 
-function procesarLogin() {
+function procesarLogin(e) {
+  if (e) e.preventDefault();
   const inputPin = document.getElementById('login-pin');
   const selectRol = document.getElementById('login-rol');
 
@@ -195,7 +196,7 @@ function formatearInputRut(input) {
   if (input) input.value = formatearRutChile(input.value);
 }
 
-// TUTORES Y AGENDA
+// TUTORES Y PACIENTES
 function poblarCombosTutores() {
   const selectsTutor = [
     document.getElementById('age-select-tutor'),
@@ -205,7 +206,7 @@ function poblarCombosTutores() {
   const tutoresMap = new Map();
   listaPacientesGlobal.forEach(p => {
     const r = formatearRutChile(p.rut || p.RUT);
-    const n = p.nombre || p.Nombre || p.tutor || 'Sin Nombre';
+    const n = p.tutor || p.Tutor || p.nombre || p.Nombre || 'Sin Nombre';
     if (r && !tutoresMap.has(r)) tutoresMap.set(r, n);
   });
 
@@ -220,6 +221,41 @@ function poblarCombosTutores() {
   });
 }
 
+async function guardarTutor(e) {
+  if (e) e.preventDefault();
+  const rutVal = document.getElementById('tut-rut').value;
+  const nomVal = document.getElementById('tut-nombre').value;
+  const telVal = document.getElementById('tut-telefono').value;
+  const masVal = document.getElementById('tut-mascota').value;
+  const razVal = document.getElementById('tut-raza').value;
+  const edaVal = document.getElementById('tut-edad').value;
+
+  if (!rutVal || !nomVal || !masVal) {
+    alert("Ingresa RUT, Nombre del tutor y Nombre de la mascota.");
+    return;
+  }
+
+  const payload = {
+    rut: rutVal,
+    tutor: nomVal,
+    telefono: telVal,
+    mascota: masVal,
+    especie: razVal,
+    raza: razVal,
+    edad: edaVal
+  };
+
+  try {
+    const res = await enviarFormularioBackend('guardarPaciente', payload);
+    alert('🐾 ' + res.message);
+    document.getElementById('form-tutor').reset();
+    await cargarDatosBackend();
+  } catch (err) {
+    alert('⚠️ Error al registrar tutor: ' + err.message);
+  }
+}
+
+// AGENDA
 function actualizarMascotasAgenda() {
   const rutSeleccionado = document.getElementById('age-select-tutor').value;
   const selectMascota = document.getElementById('age-select-mascota');
