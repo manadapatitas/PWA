@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manada Patitas - Gestión Vet & Estética</title>
-  <link rel="stylesheet" href="style.css">
+  <!-- Nombre corregido del CSS con "s" final -->
+  <link rel="stylesheet" href="styles.css">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d9488">
 </head>
@@ -37,9 +38,8 @@
     </div>
   </div>
 
-  <!-- APLICACIÓN PRINCIPAL (OCULTA POR DEFECTO) -->
+  <!-- APLICACIÓN PRINCIPAL -->
   <div id="appMain" style="display: none;">
-    <!-- BARRA SUPERIOR / NAVEGACIÓN -->
     <header class="navbar">
       <div class="nav-brand">
         <h1>🐾 Manada Patitas</h1>
@@ -53,9 +53,7 @@
       </nav>
     </header>
 
-    <!-- CONTENEDOR PRINCIPAL -->
     <main class="main-container">
-
       <!-- SECCIÓN: AGENDA -->
       <section id="seccion-agenda" class="seccion-app">
         <div class="toolbar">
@@ -69,9 +67,7 @@
         <div class="grid-agenda">
           <div class="card">
             <h3>Bloques Horarios</h3>
-            <div id="contenedorBloquesAgenda" class="bloques-container">
-              <!-- Se renderizan los bloques de 09:00 a 19:30 dinámicamente -->
-            </div>
+            <div id="contenedorBloquesAgenda" class="bloques-container"></div>
           </div>
         </div>
       </section>
@@ -79,20 +75,54 @@
       <!-- SECCIÓN: TUTORES Y PACIENTES -->
       <section id="seccion-tutores" class="seccion-app" style="display: none;">
         <h2>Gestión de Tutores y Pacientes</h2>
-        <div id="contenedorTutores">
-          <p>Cargando datos de tutores...</p>
-        </div>
+        <div id="contenedorTutores"><p>Cargando datos de tutores...</p></div>
       </section>
 
       <!-- SECCIÓN: CLÍNICA -->
       <section id="seccion-clinica" class="seccion-app" style="display: none;">
         <h2>Historial y Ficha Clínica</h2>
-        <div id="contenedorClinica">
-          <p>Seleccione un paciente para consultar o registrar atención médica.</p>
-        </div>
+        <div id="contenedorClinica"><p>Seleccione un paciente para consultar o registrar atención.</p></div>
       </section>
-
     </main>
+  </div>
+
+  <!-- MODAL DE AGENDAMIENTO -->
+  <div id="modalAgendar" class="modal" style="display: none;">
+    <div class="modal-content card">
+      <span class="close-btn" onclick="cerrarModal()">&times;</span>
+      <h3>Agendar Nueva Cita</h3>
+      <form onsubmit="guardarCitaModal(event);">
+        <div class="campo-form">
+          <label>Bloque Seleccionado:</label>
+          <input type="text" id="modalFechaHora" readonly style="background-color: #f3f4f6;" />
+        </div>
+        <div class="campo-form">
+          <label for="selectTutorModal">Tutor:</label>
+          <select id="selectTutorModal" onchange="alSeleccionarTutorModal()" required>
+            <option value="">-- Selecciona un Tutor --</option>
+          </select>
+        </div>
+        <div class="campo-form">
+          <label for="selectMascotaModal">Mascota:</label>
+          <select id="selectMascotaModal" required>
+            <option value="">-- Selecciona Mascota --</option>
+          </select>
+        </div>
+        <div class="campo-form">
+          <label for="selectServicioModal">Servicio:</label>
+          <select id="selectServicioModal">
+            <option value="Consulta Veterinaria">Consulta Veterinaria</option>
+            <option value="Vacunación / Desparasitación">Vacunación / Desparasitación</option>
+            <option value="Peluquería / Estética">Peluquería / Estética</option>
+            <option value="Control">Control</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button type="submit" class="btn-primario" style="flex: 1;">Confirmar Cita</button>
+          <button type="button" class="btn-secundario" onclick="cerrarModal()">Cancelar</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script src="app.js"></script>
