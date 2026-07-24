@@ -334,3 +334,9 @@ function cambiarPestana(idPestana) {
     seleccionada.classList.remove("hidden");
   }
 }
+
+// Alias para evitar el error del HTML
+window.procesarLogin = function(e) {
+  if (e) e.preventDefault();
+  iniciarSesion(e);
+};
