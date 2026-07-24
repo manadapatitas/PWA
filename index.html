@@ -53,7 +53,7 @@
     </div>
   </div>
 
-  <!-- NAVEGACIÓN -->
+  <!-- NAVEGACIÓN PRINCIPAL -->
   <main class="main-content">
     <nav class="nav-tabs">
       <button id="nav-btn-agenda" class="tab-btn active" onclick="cambiarPestana('agenda')">📅 Agenda & Citas</button>
@@ -251,10 +251,10 @@
       </div>
     </section>
 
-    <!-- VISTA 5: INVENTARIO -->
+    <!-- VISTA 5: INVENTARIO CON MARGEN DE GANANCIA -->
     <section id="sec-inventario" class="tab-content hidden">
       <div class="card">
-        <h3>📦 Nuevo Producto / Stock</h3>
+        <h3>📦 Nuevo Producto / Actualizar Stock</h3>
         <form id="form-inventario" onsubmit="guardarProducto(event)">
           <div class="form-grid">
             <div class="form-group">
@@ -275,8 +275,16 @@
               </select>
             </div>
             <div class="form-group">
+              <label>Costo Neto/Compra ($)</label>
+              <input type="number" id="inv-costo" placeholder="Ej: 10000" oninput="calcularPrecioVentaSugerido()" required>
+            </div>
+            <div class="form-group">
+              <label>Margen de Ganancia (%)</label>
+              <input type="number" id="inv-margen" placeholder="Ej: 30" value="30" oninput="calcularPrecioVentaSugerido()" required>
+            </div>
+            <div class="form-group">
               <label>Precio Venta ($)</label>
-              <input type="number" id="inv-precio" placeholder="Ej: 15990" required>
+              <input type="number" id="inv-precio" placeholder="Ej: 13000" required>
             </div>
             <div class="form-group">
               <label>Stock Disponible</label>
@@ -296,19 +304,21 @@
                 <th>Código</th>
                 <th>Producto</th>
                 <th>Categoría</th>
-                <th>Precio</th>
+                <th>Costo</th>
+                <th>Margen (%)</th>
+                <th>Precio Venta</th>
                 <th>Stock</th>
               </tr>
             </thead>
             <tbody id="tabla-inventario-body">
-              <tr><td colspan="5" style="text-align:center;">Cargando inventario...</td></tr>
+              <tr><td colspan="7" style="text-align:center;">Cargando inventario...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- VISTA 6: POS / CAJA -->
+    <!-- VISTA 6: POS / CAJA DE VENTAS -->
     <section id="sec-caja" class="tab-content hidden">
       <div class="pos-container">
         <!-- Panel Izquierdo: Catálogo y Búsqueda -->
