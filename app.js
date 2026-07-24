@@ -3,7 +3,7 @@
 // =================================================================
 
 // ⚠️ REEMPLAZA ESTA URL CON LA URL DE TU WEB APP DE GOOGLE APPS SCRIPT
-const URL_BACKEND = "TU_URL_DE_GOOGLE_APPS_SCRIPT_AQUI";
+const URL_BACKEND = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAAyuqBHUON3C17OW4SLbeRxoutLyYneHcFGfQ_Q4OqwoGBCRESrcF/exec";
 
 // Estado global de la aplicación
 let datosGlobales = {
