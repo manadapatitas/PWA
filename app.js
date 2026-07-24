@@ -2,29 +2,21 @@
 // FRONTEND PWA - MANADA PATITAS (APP.JS COMPLETO)
 // ============================================================================
 
-// URL DEL BACKEND EN GOOGLE APPS SCRIPT
 const URL_BACKEND = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAATyuqBHUON3C17OW4SLBeRxoutLyYneHcFgfQ_Q4owqoGBCRESRclw/exec";
 
-// Estado global de la aplicación
 let datosGlobales = {
   tutores: [],
   agenda: [],
   clinica: []
 };
 
-// ----------------------------------------------------------------------------
-// 1. INICIALIZACIÓN Y GESTIÓN DE SESIÓN
-// ----------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", function () {
   comprobarSesion();
 
-  // Escuchar cambio de fecha en la agenda para re-renderizar bloques
   const inputFecha = document.getElementById("inputVerFecha");
   if (inputFecha) {
     inputFecha.value = obtenerFechaHoy();
-    inputFecha.addEventListener("change", function () {
-      renderizarAgendaBloques();
-    });
+    inputFecha.addEventListener("change", renderizarAgendaBloques);
   }
 });
 
@@ -38,7 +30,7 @@ function comprobarSesion() {
         return;
       }
     } catch (e) {
-      console.error("Error al leer sesión local:", e);
+      console.error("Error sesión:", e);
     }
   }
   ocultarAplicacion();
@@ -58,7 +50,6 @@ function iniciarSesion(event) {
     return;
   }
 
-  // Guardar sesión en localStorage
   const sessionData = {
     rol: rol,
     loggedIn: true,
@@ -69,10 +60,7 @@ function iniciarSesion(event) {
   mostrarAplicacion(rol);
 }
 
-// Alias global para compatibilidad
-window.procesarLogin = function (e) {
-  iniciarSesion(e);
-};
+window.procesarLogin = function (e) { iniciarSesion(e); };
 
 function cerrarSesion() {
   localStorage.removeItem("manada_session");
@@ -80,113 +68,82 @@ function cerrarSesion() {
 }
 
 function mostrarAplicacion(rol) {
-  const pantallaLogin = document.getElementById("pantallaLogin");
-  const appMain = document.getElementById("appMain");
-  const labelRol = document.getElementById("labelRolUsuario");
-
-  if (pantallaLogin) pantallaLogin.style.display = "none";
-  if (appMain) appMain.style.display = "block";
-  if (labelRol) labelRol.textContent = rol;
-
-  // Cargar datos desde el backend
+  document.getElementById("pantallaLogin").style.display = "none";
+  document.getElementById("appMain").style.display = "block";
+  document.getElementById("labelRolUsuario").textContent = rol;
   cargarDatosBackend();
 }
 
 function ocultarAplicacion() {
-  const pantallaLogin = document.getElementById("pantallaLogin");
-  const appMain = document.getElementById("appMain");
-
-  if (pantallaLogin) pantallaLogin.style.display = "flex";
-  if (appMain) appMain.style.display = "none";
+  document.getElementById("pantallaLogin").style.display = "flex";
+  document.getElementById("appMain").style.display = "none";
 }
 
-// ----------------------------------------------------------------------------
-// 2. NAVEGACIÓN ENTRE SECCIONES
-// ----------------------------------------------------------------------------
 function cambiarSeccion(nombreSeccion) {
-  const secciones = document.querySelectorAll(".seccion-app");
-  secciones.forEach(sec => sec.style.display = "none");
+  document.querySelectorAll(".seccion-app").forEach(sec => sec.style.display = "none");
+  document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
 
-  const botones = document.querySelectorAll(".nav-btn");
-  botones.forEach(btn => btn.classList.remove("active"));
+  const seccion = document.getElementById(`seccion-${nombreSeccion}`);
+  if (seccion) seccion.style.display = "block";
 
-  const seccionObjetivo = document.getElementById(`seccion-${nombreSeccion}`);
-  if (seccionObjetivo) {
-    seccionObjetivo.style.display = "block";
-  }
-
-  // Activar botón seleccionado
-  if (event && event.target) {
-    event.target.classList.add("active");
-  }
+  if (event && event.target) event.target.classList.add("active");
 }
 
-// ----------------------------------------------------------------------------
-// 3. COMUNICACIÓN CON EL BACKEND (APPS SCRIPT)
-// ----------------------------------------------------------------------------
 function cargarDatosBackend() {
   fetch(`${URL_BACKEND}?action=obtenerTodo`)
-    .then(response => response.json())
+    .then(res => res.json())
     .then(data => {
       if (data) {
         datosGlobales.tutores = data.tutores || [];
         datosGlobales.agenda = data.agenda || [];
         datosGlobales.clinica = data.clinica || [];
 
+        poblarDesplegableTutoresModal();
         renderizarAgendaBloques();
       }
     })
-    .catch(error => {
-      console.error("Error al sincronizar con el backend:", error);
-      // Igualmente renderizamos bloques vacíos para permitir trabajar
+    .catch(err => {
+      console.error("Error al conectar con backend:", err);
       renderizarAgendaBloques();
     });
 }
 
-// ----------------------------------------------------------------------------
-// 4. RENDERIZADO DE AGENDA Y BLOQUES
-// ----------------------------------------------------------------------------
 function renderizarAgendaBloques() {
   const contenedor = document.getElementById("contenedorBloquesAgenda");
   if (!contenedor) return;
 
   contenedor.innerHTML = "";
+  const fechaSeleccionada = document.getElementById("inputVerFecha") ? document.getElementById("inputVerFecha").value : obtenerFechaHoy();
 
-  const fechaSeleccionada = document.getElementById("inputVerFecha") ? 
-                            document.getElementById("inputVerFecha").value : 
-                            obtenerFechaHoy();
-
-  // Generar bloques de media hora desde las 09:00 hasta las 19:30
   const horas = [];
   for (let h = 9; h <= 19; h++) {
-    const horaFormateada = h < 10 ? `0${h}` : `${h}`;
-    horas.push(`${horaFormateada}:00`);
-    horas.push(`${horaFormateada}:30`);
+    const hh = h < 10 ? `0${h}` : `${h}`;
+    horas.push(`${hh}:00`);
+    horas.push(`${hh}:30`);
   }
 
-  // Filtrar citas del día seleccionado
-  const citasDelDia = datosGlobales.agenda.filter(cita => cita.fecha === fechaSeleccionada);
+  const citasDelDia = datosGlobales.agenda.filter(cita => String(cita.Fecha_Hora || cita.fecha).includes(fechaSeleccionada) && cita.Estado !== "Cancelado");
 
   horas.forEach(hora => {
-    const cita = citasDelDia.find(c => c.hora === hora);
+    const cita = citasDelDia.find(c => String(c.Fecha_Hora || c.hora).includes(hora));
 
     const divBloque = document.createElement("div");
     divBloque.className = "bloque-horario";
-    divBloque.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #e5e7eb; margin-bottom: 5px; background-color: #f9fafb; border-radius: 6px;";
+    divBloque.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #e5e7eb; margin-bottom: 5px; background-color: #ffffff; border-radius: 6px;";
 
     if (cita) {
-      divBloque.style.backgroundColor = "#fe2c55"; // Fondo rojo para citas agendadas
+      divBloque.style.backgroundColor = "#d9534f";
       divBloque.style.color = "#ffffff";
       divBloque.innerHTML = `
-        <strong>${hora} hrs</strong>
-        <span>🐾 ${cita.paciente || "Mascota"} (${cita.tutor || "Tutor"}) - ${cita.servicio || "Atención"}</span>
-        <small style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">Reservado</small>
+        <strong>⏰ ${hora} hrs</strong>
+        <span>🐾 ${cita.Mascota || cita.paciente || "Mascota"} (${cita.Tutor || cita.tutor || "Tutor"})</span>
+        <small style="background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px;">🚫 Reservado</small>
       `;
     } else {
       divBloque.innerHTML = `
-        <strong style="color: #374151;">${hora} hrs</strong>
-        <span style="color: #9ca3af; font-style: italic;">Disponible</span>
-        <button class="btn-secundario" style="padding: 4px 10px; font-size: 12px;" onclick="agendarEnHora('${hora}')">+ Agendar</button>
+        <strong>⏰ ${hora} hrs</strong>
+        <span style="color: #10b981;">🟢 Disponible</span>
+        <button type="button" class="btn-secundario" style="padding: 4px 10px; font-size: 12px;" onclick="agendarEnHora('${hora}')">+ Agendar</button>
       `;
     }
 
@@ -194,14 +151,94 @@ function renderizarAgendaBloques() {
   });
 }
 
+// ----------------------------------------------------------------------------
+// MODAL DE AGENDAMIENTO
+// ----------------------------------------------------------------------------
+let horaSeleccionadaModal = "";
+
 function agendarEnHora(hora) {
+  horaSeleccionadaModal = hora;
   const fecha = document.getElementById("inputVerFecha").value;
-  alert(`Iniciando reserva para el día ${fecha} a las ${hora} hrs.`);
+  document.getElementById("modalFechaHora").value = `${fecha} ${hora}`;
+  document.getElementById("modalAgendar").style.display = "flex";
 }
 
-// ----------------------------------------------------------------------------
-// UTILIDADES
-// ----------------------------------------------------------------------------
+function cerrarModal() {
+  document.getElementById("modalAgendar").style.display = "none";
+}
+
+function poblarDesplegableTutoresModal() {
+  const selectTutor = document.getElementById("selectTutorModal");
+  if (!selectTutor) return;
+
+  selectTutor.innerHTML = '<option value="">-- Selecciona un Tutor --</option>';
+  datosGlobales.tutores.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t.Nombre || t.RUT;
+    opt.textContent = `${t.Nombre} (${t.RUT || "S/RUT"})`;
+    opt.dataset.mascota = t.Mascota || "";
+    selectTutor.appendChild(opt);
+  });
+}
+
+function alSeleccionarTutorModal() {
+  const selectTutor = document.getElementById("selectTutorModal");
+  const selectMascota = document.getElementById("selectMascotaModal");
+  if (!selectTutor || !selectMascota) return;
+
+  const opt = selectTutor.options[selectTutor.selectedIndex];
+  selectMascota.innerHTML = '<option value="">-- Selecciona Mascota --</option>';
+
+  if (opt && opt.dataset.mascota) {
+    const optM = document.createElement("option");
+    optM.value = opt.dataset.mascota;
+    optM.textContent = opt.dataset.mascota;
+    selectMascota.appendChild(optM);
+    selectMascota.value = opt.dataset.mascota;
+  }
+}
+
+async function guardarCitaModal(e) {
+  if (e) e.preventDefault();
+
+  const fechaHora = document.getElementById("modalFechaHora").value;
+  const tutor = document.getElementById("selectTutorModal").value;
+  const mascota = document.getElementById("selectMascotaModal").value;
+  const servicio = document.getElementById("selectServicioModal").value;
+
+  if (!tutor || !mascota) {
+    alert("⚠️ Selecciona el tutor y la mascota.");
+    return;
+  }
+
+  const payload = {
+    accion: "guardarCita",
+    fecha: fechaHora,
+    mascota: mascota,
+    tutor: tutor,
+    servicio: servicio
+  };
+
+  try {
+    const res = await fetch(URL_BACKEND, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (data.status === "success") {
+      alert("📅 Cita agendada exitosamente.");
+      cerrarModal();
+      cargarDatosBackend();
+    } else {
+      alert("⚠️ " + (data.message || "Error al guardar la cita."));
+    }
+  } catch (err) {
+    alert("❌ Error de comunicación con la base de datos.");
+    console.error(err);
+  }
+}
+
 function obtenerFechaHoy() {
   const hoy = new Date();
   const yyyy = hoy.getFullYear();
