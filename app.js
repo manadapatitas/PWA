@@ -22,6 +22,7 @@ let carritoPOS = [];
 document.addEventListener('DOMContentLoaded', () => {
   inicializarAutenticacion();
   configurarFechaPorDefecto();
+  configurarEventosDesgloseIVA();
   mostrarModalLogin();
 });
 
@@ -522,18 +523,34 @@ async function guardarPeluqueria(e) {
 }
 
 // -----------------------------------------------------------------
-// INVENTARIO - CÁLCULO CÁLCULO AUTOMÁTICO DE VALOR NETO, IVA Y TOTAL
+// INVENTARIO - CÁLCULO DE VALOR NETO, IVA (19%) Y PRECIO BRUTO
 // -----------------------------------------------------------------
+function configurarEventosDesgloseIVA() {
+  const inputCosto = document.getElementById('inv-costo');
+  const inputMargen = document.getElementById('inv-margen');
+  const inputPrecio = document.getElementById('inv-precio');
+
+  if (inputCosto) inputCosto.addEventListener('input', calcularPrecioVentaSugerido);
+  if (inputMargen) inputMargen.addEventListener('input', calcularPrecioVentaSugerido);
+  if (inputPrecio) inputPrecio.addEventListener('input', calcularDesdePrecioFinal);
+}
+
 function calcularPrecioVentaSugerido() {
   const costoNeto = parseFloat(document.getElementById('inv-costo').value) || 0;
   const margenPct = parseFloat(document.getElementById('inv-margen').value) || 0;
+  const precioInput = document.getElementById('inv-precio');
 
   if (costoNeto > 0) {
+    // 1. Neto = Costo + Margen %
     const valorVentaNeto = Math.round(costoNeto * (1 + (margenPct / 100)));
+    // 2. IVA Chile 19%
     const iva = Math.round(valorVentaNeto * 0.19);
+    // 3. Bruto Total
     const precioFinalBruto = valorVentaNeto + iva;
 
-    document.getElementById('inv-precio').value = precioFinalBruto;
+    if (document.activeElement.id !== 'inv-precio' && precioInput) {
+      precioInput.value = precioFinalBruto;
+    }
 
     document.getElementById('lbl-inv-neto').innerText = `$${valorVentaNeto.toLocaleString('es-CL')}`;
     document.getElementById('lbl-inv-iva').innerText = `$${iva.toLocaleString('es-CL')}`;
@@ -542,6 +559,19 @@ function calcularPrecioVentaSugerido() {
     document.getElementById('lbl-inv-neto').innerText = `$0`;
     document.getElementById('lbl-inv-iva').innerText = `$0`;
     document.getElementById('lbl-inv-total').innerText = `$0`;
+  }
+}
+
+function calcularDesdePrecioFinal() {
+  const precioBruto = parseFloat(document.getElementById('inv-precio').value) || 0;
+  
+  if (precioBruto > 0) {
+    const valorNeto = Math.round(precioBruto / 1.19);
+    const iva = precioBruto - valorNeto;
+
+    document.getElementById('lbl-inv-neto').innerText = `$${valorNeto.toLocaleString('es-CL')}`;
+    document.getElementById('lbl-inv-iva').innerText = `$${iva.toLocaleString('es-CL')}`;
+    document.getElementById('lbl-inv-total').innerText = `$${precioBruto.toLocaleString('es-CL')}`;
   }
 }
 
@@ -558,14 +588,15 @@ function renderizarTablaInventario() {
   listaInventarioGlobal.forEach(p => {
     const tr = document.createElement('tr');
     
-    // Mapeo preciso de nombres de propiedades del backend
     const codigo = p.sku || p.codigo || '-';
     const nombre = p.nombre || '-';
     const categoria = p.categoria || 'General';
     const costo = Number(p.costo || 0).toLocaleString('es-CL');
     const margen = (p.margen_pct !== undefined && p.margen_pct !== null && p.margen_pct !== "") ? p.margen_pct : (p.margen || 0);
-    const precioVenta = Number(p.precio_venta || p.precio || 0).toLocaleString('es-CL');
+    const precioBruto = Number(p.precio_venta || p.precio || 0);
     const stock = (p.stock !== undefined && p.stock !== null) ? p.stock : 0;
+
+    const netoEst = Math.round(precioBruto / 1.19);
 
     tr.innerHTML = `
       <td><code>${codigo}</code></td>
@@ -573,7 +604,10 @@ function renderizarTablaInventario() {
       <td><span class="badge-cat">${categoria}</span></td>
       <td>$${costo}</td>
       <td>${margen}%</td>
-      <td><strong>$${precioVenta}</strong></td>
+      <td>
+        <strong>$${precioBruto.toLocaleString('es-CL')}</strong><br>
+        <small style="color:#666; font-size:0.75rem;">(Neto: $${netoEst.toLocaleString('es-CL')} + IVA)</small>
+      </td>
       <td><strong style="color: ${stock <= 3 ? '#e74c3c' : '#2e7d32'}">${stock} u.</strong></td>
     `;
     tbody.appendChild(tr);
