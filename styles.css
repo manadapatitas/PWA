@@ -1,162 +1,266 @@
-/* ESTILOS BASE Y REINICIO */
+/* ============================================================================
+   ESTILOS GENERALES Y VARIABLES - MANADA PATITAS
+   ============================================================================ */
+:root {
+  --primary: #0d9488;
+  --primary-hover: #0f766e;
+  --secondary: #6b7280;
+  --bg-color: #f3f4f6;
+  --card-bg: #ffffff;
+  --text-main: #1f2937;
+  --text-muted: #6b7280;
+  --danger: #ef4444;
+  --success: #10b981;
+  --border-color: #e5e7eb;
+  --radius: 8px;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 body {
-  background-color: #f4f7f6;
-  color: #333;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  line-height: 1.5;
 }
 
-.hidden { display: none !important; }
-
-/* BLOQUEO TOTAL ANTES DE LOGIN */
-body:not(.autenticado) .main-content,
-body:not(.autenticado) .app-header {
-  display: none !important;
+/* ============================================================================
+   PANTALLA DE LOGIN
+   ============================================================================ */
+.container-login {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: #0f172a;
 }
 
-/* CONTROL DE VISIBILIDAD DE PESTAÑAS SEGÚN ROL */
-body.rol-peluqueria .solo-admin,
-body.rol-peluqueria .solo-vet,
-body.rol-peluqueria .solo-caja,
-body.rol-peluqueria #nav-btn-clinica,
-body.rol-peluqueria #nav-btn-inventario,
-body.rol-peluqueria #nav-btn-caja {
-  display: none !important;
+.card-login {
+  background: var(--card-bg);
+  padding: 30px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 400px;
 }
 
-body.rol-veterinaria .solo-admin,
-body.rol-veterinaria .solo-peluqueria,
-body.rol-veterinaria .solo-caja,
-body.rol-veterinaria #nav-btn-peluqueria,
-body.rol-veterinaria #nav-btn-inventario,
-body.rol-veterinaria #nav-btn-caja {
-  display: none !important;
+.card-login h2 {
+  color: var(--primary);
+  margin-bottom: 5px;
+  text-align: center;
 }
 
-/* Nota: El rol 'caja' ya no tiene restricciones y puede ver todo igual que el admin */
+.subtitulo {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  text-align: center;
+}
 
-/* ENCABEZADO */
-.app-header {
-  background-color: #008080;
-  color: white;
-  padding: 12px 20px;
+.campo-form {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.campo-form label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 5px;
+  color: var(--text-main);
+}
+
+.campo-form input,
+.campo-form select {
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.campo-form input:focus,
+.campo-form select:focus {
+  border-color: var(--primary);
+}
+
+/* ============================================================================
+   BARRA DE NAVEGACIÓN Y CABECERA
+   ============================================================================ */
+.navbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  flex-wrap: wrap;
+  gap: 15px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.logo-container { display: flex; align-items: center; gap: 12px; }
-.app-logo { height: 40px; border-radius: 6px; }
-.brand-text h1 { font-size: 1.4rem; margin: 0; }
-.sub-brand { font-size: 0.8rem; opacity: 0.85; }
-
-.header-actions { display: flex; align-items: center; gap: 10px; }
-.user-badge { background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 12px; font-size: 0.85rem; }
-
-/* BOTONES */
-button { border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
-.btn-primary { background-color: #008080; color: white; }
-.btn-primary:hover { background-color: #006666; }
-.btn-secondary { background-color: #2c3e50; color: white; }
-.btn-danger { background-color: #e74c3c; color: white; }
-
-/* MODAL LOGIN */
-.modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999;
-}
-.modal-content { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-
-/* NAVEGACIÓN TAB */
-.main-content { padding: 20px; max-width: 1200px; margin: 0 auto; }
-.nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-.tab-btn { background-color: #e0e0e0; color: #444; border-radius: 20px; padding: 8px 16px; }
-.tab-btn.active { background-color: #008080; color: white; }
-
-/* TARJETAS Y FORMULARIOS */
-.card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 15px; }
-.form-group { display: flex; flex-direction: column; gap: 5px; }
-.form-group label { font-size: 0.85rem; font-weight: 600; color: #555; }
-input, select, textarea { padding: 9px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
-input:focus, select:focus, textarea:focus { border-color: #008080; outline: none; }
-
-/* BANNER PACIENTE EN CLÍNICA */
-.info-banner {
-  background-color: #e0f2f1;
-  border-left: 4px solid #008080;
-  padding: 10px 14px;
-  border-radius: 4px;
-  margin-top: 10px;
-  font-size: 0.9rem;
-  color: #004d40;
-}
-
-/* HISTORIAL CLÍNICO */
-.card-historial {
-  border-left: 3px solid #008080;
-  background: #f9f9f9;
-  padding: 12px 15px;
-  margin-bottom: 12px;
-  border-radius: 0 6px 6px 0;
-}
-
-/* PARRILLA DE HORARIOS Y AGENDA (30 MIN) */
-.horarios-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+.nav-brand {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  margin-top: 10px;
 }
 
-.bloque-hora {
-  border-radius: 8px;
-  padding: 10px;
-  text-align: center;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  border: 1px solid #e0e0e0;
+.nav-brand h1 {
+  font-size: 1.3rem;
+  color: var(--primary);
 }
 
-.bloque-hora.disponible {
-  background-color: #e8f5e9;
-  border-color: #a5d6a7;
-  color: #2e7d32;
+.badge-rol {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.nav-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================================
+   BOTONES
+   ============================================================================ */
+.nav-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.nav-btn.active {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.btn-primario {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.bloque-hora.disponible:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-  background-color: #c8e6c9;
+.btn-primario:hover {
+  background-color: var(--primary-hover);
 }
 
-.bloque-hora.ocupado {
-  background-color: #ffebee;
-  border-color: #ef9a9a;
-  color: #c62828;
+.btn-secundario {
+  background-color: #ffffff;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
-.bloque-hora.pasado {
-  background-color: #f5f5f5;
-  border-color: #e0e0e0;
-  color: #9e9e9e;
-  cursor: not-allowed;
-  opacity: 0.7;
+.btn-secundario:hover {
+  background-color: #f9fafb;
 }
 
-.bloque-hora .hora-titulo {
-  font-size: 1.05rem;
-  font-weight: bold;
-  margin-bottom: 4px;
+.btn-danger {
+  background-color: #fef2f2;
+  color: var(--danger);
+  border-color: #fecaca;
 }
 
-.bloque-hora .info-cita {
-  font-size: 0.8rem;
-  line-height: 1.2;
+.btn-danger:hover {
+  background-color: var(--danger);
+  color: white;
+}
+
+/* ============================================================================
+   CONTENEDOR PRINCIPAL Y TARJETAS
+   ============================================================================ */
+.main-container {
+  max-width: 1000px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.filtro-fecha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+}
+
+/* ============================================================================
+   VENTANA MODAL (EMERGENTE)
+   ============================================================================ */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 450px;
+  position: relative;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
