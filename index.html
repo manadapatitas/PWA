@@ -252,7 +252,10 @@
           <div class="form-grid">
             <div class="form-group">
               <label>Código de Barras / SKU</label>
-              <input type="text" id="inv-codigo" placeholder="Ej: 780123456789" required>
+              <div class="pos-search-row">
+                <input type="text" id="inv-codigo" placeholder="Escanea o escribe el código" required>
+                <button type="button" id="btn-escanear-camara-inventario" class="btn-scan" title="Escanear con la cámara">📷</button>
+              </div>
             </div>
             <div class="form-group">
               <label>Nombre del Producto</label>
@@ -280,21 +283,46 @@
               <input type="number" id="inv-precio" placeholder="Se calcula automáticamente" readonly class="readonly-field" title="Se calcula automáticamente a partir del costo y el margen">
             </div>
             <div class="form-group">
+              <label>Redondeo Comercial</label>
+              <select id="inv-redondeo">
+                <option value="cercano90">Terminar en $X90 (ej. $23.490)</option>
+                <option value="redondo990">Terminar en $X.990 (ej. $23.990)</option>
+                <option value="ninguno">Sin redondeo (valor exacto)</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label>Stock a Ingresar</label>
               <input type="number" id="inv-stock" placeholder="Ej: 10" required>
+            </div>
+            <div class="form-group">
+              <label>Fecha de Vencimiento (opcional)</label>
+              <input type="date" id="inv-vencimiento" title="Relevante sobre todo para Alimentos y Farmacia">
             </div>
           </div>
 
           <!-- BANNER DESGLOSE IVA Y NETO -->
-          <div id="inv-desglose-box" style="margin-top: 15px; padding: 12px; background-color: #e0f2f1; border-radius: 8px; border-left: 5px solid #008080; display: flex; gap: 20px; flex-wrap: wrap;">
+          <div id="inv-desglose-box" style="margin-top: 15px; padding: 12px; background-color: #e0f2f1; border-radius: 8px; border-left: 5px solid #008080; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
             <div>💵 <strong>Valor Venta Neto:</strong> <span id="lbl-inv-neto">$0</span></div>
             <div>🧾 <strong>IVA (19%):</strong> <span id="lbl-inv-iva">$0</span></div>
             <div>🏷️ <strong>Precio Final Bruto:</strong> <strong id="lbl-inv-total" style="color:#008080;">$0</strong></div>
+            <div><small id="lbl-inv-exacto" style="color:#666;"></small></div>
           </div>
-          <p class="form-hint">Si ingresas un SKU que ya existe, se sumará el stock nuevo al stock actual y se actualizará el precio.</p>
+          <p class="form-hint">Si ingresas un código que ya existe, se sumará el stock nuevo al stock actual y se actualizará el precio. La fecha de vencimiento solo se reemplaza si ingresas una nueva.</p>
 
           <button type="submit" class="btn-primary" style="margin-top: 15px;">Agregar / Actualizar Inventario</button>
         </form>
+      </div>
+
+      <!-- CARGA MASIVA DESDE EXCEL -->
+      <div class="card" style="margin-top: 20px;">
+        <h3>📥 Carga Masiva desde Excel</h3>
+        <p class="form-hint" style="margin-bottom: 10px;">
+          Sube un archivo .xlsx, .xls o .csv con las columnas: <strong>Codigo, Nombre, Categoria, Costo, Margen_Pct, Stock, Fecha_Vencimiento</strong> (esta última es opcional).
+          El precio de venta se calcula automáticamente para cada fila (igual que en el formulario de arriba), usando el redondeo comercial seleccionado.
+          Si un código ya existe, se suma el stock y se actualiza el precio; si no existe, se crea el producto.
+        </p>
+        <input type="file" id="inv-archivo-masivo" accept=".xlsx,.xls,.csv">
+        <div id="inv-carga-masiva-estado" style="margin-top: 8px; font-size: 0.85rem; color: #008080; font-weight: 600;"></div>
       </div>
 
       <div class="card" style="margin-top: 20px;">
@@ -310,10 +338,11 @@
                 <th>Margen (%)</th>
                 <th>Precio Venta</th>
                 <th>Stock</th>
+                <th>Vencimiento</th>
               </tr>
             </thead>
             <tbody id="tabla-inventario-body">
-              <tr><td colspan="7" style="text-align:center;">Cargando inventario...</td></tr>
+              <tr><td colspan="8" style="text-align:center;">Cargando inventario...</td></tr>
             </tbody>
           </table>
         </div>
@@ -401,6 +430,8 @@
 
   <!-- Librería para escaneo de códigos de barras / QR con la cámara -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Librería para leer archivos Excel/CSV en el navegador (carga masiva de inventario) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
