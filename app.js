@@ -149,7 +149,6 @@ async function cargarDatosBackend() {
   try {
     const res = await fetch(URL_WEB_APP, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ accion: "obtenerTodo" })
     });
     const textoRespuesta = await res.text();
@@ -180,7 +179,6 @@ async function enviarFormularioBackend(action, payload) {
   const bodyData = { accion: action, ...payload };
   const res = await fetch(URL_WEB_APP, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(bodyData)
   });
   const json = await res.json();
@@ -532,18 +530,9 @@ function configurarEventosDesgloseIVA() {
   const inputMargen = document.getElementById('inv-margen');
   const inputPrecio = document.getElementById('inv-precio');
 
-  if (inputCosto) {
-    inputCosto.addEventListener('input', calcularPrecioVentaSugerido);
-    inputCosto.addEventListener('keyup', calcularPrecioVentaSugerido);
-  }
-  if (inputMargen) {
-    inputMargen.addEventListener('input', calcularPrecioVentaSugerido);
-    inputMargen.addEventListener('keyup', calcularPrecioVentaSugerido);
-  }
-  if (inputPrecio) {
-    inputPrecio.addEventListener('input', calcularDesdePrecioFinal);
-    inputPrecio.addEventListener('keyup', calcularDesdePrecioFinal);
-  }
+  if (inputCosto) inputCosto.addEventListener('input', calcularPrecioVentaSugerido);
+  if (inputMargen) inputMargen.addEventListener('input', calcularPrecioVentaSugerido);
+  if (inputPrecio) inputPrecio.addEventListener('input', calcularDesdePrecioFinal);
 }
 
 function calcularPrecioVentaSugerido() {
@@ -552,11 +541,14 @@ function calcularPrecioVentaSugerido() {
   const precioInput = document.getElementById('inv-precio');
 
   if (costoNeto > 0) {
+    // 1. Neto = Costo + Margen %
     const valorVentaNeto = Math.round(costoNeto * (1 + (margenPct / 100)));
+    // 2. IVA Chile 19%
     const iva = Math.round(valorVentaNeto * 0.19);
+    // 3. Bruto Total
     const precioFinalBruto = valorVentaNeto + iva;
 
-    if (precioInput) {
+    if (document.activeElement.id !== 'inv-precio' && precioInput) {
       precioInput.value = precioFinalBruto;
     }
 
@@ -785,8 +777,8 @@ async function procesarVentaPOS() {
   };
 
   try {
-    const res = await enviarFormularioBackend('guardarVenta', payload);
-    alert(`💳 Venta realizada con éxito ($${totalCalculado.toLocaleString('es-CL')}). ID: ${res.id_venta || 'Registrada'}`);
+    await enviarFormularioBackend('guardarVenta', payload);
+    alert(`💳 Venta realizada con éxito ($${totalCalculado.toLocaleString('es-CL')}).`);
     carritoPOS = [];
     renderizarCarritoPOS();
     await cargarDatosBackend();
