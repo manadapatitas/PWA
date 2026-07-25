@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manada Patitas - Gestión Vet & Petshop</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=20260726">
+  <link rel="stylesheet" href="styles.css?v=20260727">
 </head>
 <body>
 
@@ -56,6 +56,7 @@
       <button id="nav-btn-peluqueria" class="tab-btn" onclick="cambiarPestana('peluqueria')">✂️ Peluquería</button>
       <button id="nav-btn-inventario" class="tab-btn" onclick="cambiarPestana('inventario')">📦 Inventario</button>
       <button id="nav-btn-caja" class="tab-btn" onclick="cambiarPestana('caja')">💳 POS / Caja</button>
+      <button id="nav-btn-dashboard" class="tab-btn" onclick="cambiarPestana('dashboard')">📊 Dashboard</button>
     </nav>
 
     <!-- AGENDA -->
@@ -383,6 +384,142 @@
       </div>
     </section>
 
+    <!-- DASHBOARD (solo Administrador) -->
+    <section id="sec-dashboard" class="tab-content hidden">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <h3 style="margin:0;">📊 Dashboard del Negocio</h3>
+          <div class="form-group" style="margin:0; min-width:220px;">
+            <label for="dashboard-filtro-periodo">Período</label>
+            <select id="dashboard-filtro-periodo" onchange="cargarDashboard(this.value)">
+              <option value="7">Últimos 7 días</option>
+              <option value="30" selected>Últimos 30 días</option>
+              <option value="90">Últimos 90 días</option>
+              <option value="0">Todo el histórico</option>
+            </select>
+          </div>
+        </div>
+        <p class="form-hint" style="margin-top:10px;">
+          La rotación y el margen se calculan solo con ventas registradas después de activar este dashboard; las ventas anteriores no quedaron desglosadas por producto.
+        </p>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">💰 Ingresos del período</div>
+          <div class="kpi-value" id="kpi-ingresos">$0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">📈 Margen estimado</div>
+          <div class="kpi-value" id="kpi-margen">$0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">🧾 Ticket promedio</div>
+          <div class="kpi-value" id="kpi-ticket">$0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">🛒 N° de ventas</div>
+          <div class="kpi-value" id="kpi-numero-ventas">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">📦 Unidades vendidas</div>
+          <div class="kpi-value" id="kpi-unidades">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">🏬 Inventario actual (a costo)</div>
+          <div class="kpi-value" id="kpi-valor-inventario">$0</div>
+        </div>
+      </div>
+
+      <!-- GRÁFICOS -->
+      <div class="dashboard-charts-grid">
+        <div class="card">
+          <h3>🏆 Top 10 más vendidos (unidades)</h3>
+          <canvas id="chart-mas-vendidos" height="220"></canvas>
+        </div>
+        <div class="card">
+          <h3>💳 Ventas por método de pago</h3>
+          <canvas id="chart-metodo-pago" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- TABLAS -->
+      <div class="dashboard-tables-grid">
+        <div class="card">
+          <h3>🏆 Más vendidos</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Unidades</th><th>Ingresos</th></tr></thead>
+              <tbody id="tabla-mas-vendidos-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>💎 Mayor margen efectivo (ganancia real)</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Margen generado</th><th>Unidades</th></tr></thead>
+              <tbody id="tabla-mayor-margen-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🐌 Rotación nula o pobre</h3>
+          <p class="form-hint">Tienen stock, pero casi no se han vendido en el período elegido.</p>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Stock</th><th>Vendidas en el período</th></tr></thead>
+              <tbody id="tabla-rotacion-baja-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>⏳ Próximos a vencer</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Stock</th><th>Vence</th></tr></thead>
+              <tbody id="tabla-proximos-vencer-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card dashboard-alert-card">
+          <h3>🚨 Candidatos a liquidar</h3>
+          <p class="form-hint">Por vencer pronto <strong>y</strong> con poca rotación: buenos candidatos a pack o promoción de recambio.</p>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Stock</th><th>Vence</th></tr></thead>
+              <tbody id="tabla-candidatos-liquidar-body"><tr><td colspan="3" style="text-align:center; color:#777;">Sin datos aún.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>⚠️ Stock crítico</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Stock</th><th>Mínimo</th></tr></thead>
+              <tbody id="tabla-stock-critico-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>👤 Ranking por vendedor</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Vendedor</th><th>Ventas</th><th>Ingresos</th></tr></thead>
+              <tbody id="tabla-ranking-vendedores-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- MODAL: FICHA DE PRODUCTO (SKU, descripción, neto, IVA, precio, cantidad) -->
@@ -425,8 +562,8 @@
 
   <!--
     IMPORTANTE: cada vez que subas una nueva versión de app.js o styles.css a GitHub,
-    cambia el número "?v=20260726" de sus <link>/<script> más abajo (por ejemplo a
-    "?v=20260727" o cualquier texto distinto). Esto obliga a los navegadores (sobre
+    cambia el número "?v=20260727" de sus <link>/<script> más abajo (por ejemplo a
+    "?v=20260728" o cualquier texto distinto). Esto obliga a los navegadores (sobre
     todo en celulares) a descargar la versión nueva con un F5 normal, sin necesidad
     de un refresco forzado (Ctrl+F5) que además cierra la sesión del usuario.
   -->
@@ -434,6 +571,8 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Librería para leer archivos Excel/CSV en el navegador (carga masiva de inventario) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="app.js?v=20260726"></script>
+  <!-- Librería para los gráficos del Dashboard -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+  <script src="app.js?v=20260727"></script>
 </body>
 </html>
