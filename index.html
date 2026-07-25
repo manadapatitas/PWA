@@ -5,16 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manada Patitas - Gestión Vet & Petshop</title>
   <link rel="stylesheet" href="styles.css">
-  <!-- Librería para Cámara -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
 
-  <!-- Encabezado Principal -->
+  <!-- Encabezado Principal con Logo en Esquina Superior Izquierda -->
   <header class="main-header">
     <div class="logo-container">
-      <h1>Manada Patitas</h1>
-      <p>Gestión Vet & Petshop</p>
+      <img src="logo.png" alt="Logo Manada Patitas" class="brand-logo" onerror="this.style.display='none'">
+      <div>
+        <h1>Manada Patitas</h1>
+        <p>Gestión Vet & Petshop</p>
+      </div>
     </div>
     <div class="user-actions">
       <span class="user-role">Administrador / Dirección</span>
@@ -25,19 +27,149 @@
 
   <!-- Navegación de Módulos -->
   <nav class="module-nav">
-    <button class="nav-tab" onclick="switchTab('agenda')">📅 Agenda & Citas</button>
+    <button class="nav-tab active" onclick="switchTab('agenda')">📅 Agenda & Citas</button>
     <button class="nav-tab" onclick="switchTab('tutores')">🐾 Tutores y Pacientes</button>
     <button class="nav-tab" onclick="switchTab('ficha')">🩺 Ficha Clínica</button>
     <button class="nav-tab" onclick="switchTab('peluqueria')">✂️ Peluquería</button>
     <button class="nav-tab" onclick="switchTab('inventario')">📦 Inventario</button>
-    <button class="nav-tab active" onclick="switchTab('pos')">💳 POS / Caja</button>
+    <button class="nav-tab" onclick="switchTab('pos')">💳 POS / Caja</button>
   </nav>
 
-  <!-- CONTENIDO MÓDULO INVENTARIO -->
+  <!-- MÓDULO 1: AGENDA & CITAS -->
+  <section id="module-agenda" class="module-section">
+    <div class="card">
+      <h2>📅 Agenda de Atenciones y Citas</h2>
+      <p class="help-text">Gestiona los turnos para consultas médicas, vacunas y servicios de peluquería.</p>
+      <div class="grid-form">
+        <div class="form-group">
+          <label>Fecha y Hora</label>
+          <input type="datetime-local" id="agendaFechaHora">
+        </div>
+        <div class="form-group">
+          <label>Nombre Paciente / Mascota</label>
+          <input type="text" id="agendaMascota" placeholder="Ej: Baco">
+        </div>
+        <div class="form-group">
+          <label>Tutor / Responsable</label>
+          <input type="text" id="agendaTutor" placeholder="Ej: Rodrigo Martínez">
+        </div>
+        <div class="form-group">
+          <label>Servicio</label>
+          <select id="agendaServicio">
+            <option value="Consulta Médica">Consulta Médica</option>
+            <option value="Vacunación">Vacunación</option>
+            <option value="Peluquería / Baño">Peluquería / Baño</option>
+            <option value="Control">Control</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="guardarCitaAgenda()">Agendar Cita</button>
+    </div>
+
+    <div class="card margin-top">
+      <h3>Proximas Citas Agendadas</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Fecha/Hora</th>
+            <th>Mascota</th>
+            <th>Tutor</th>
+            <th>Servicio</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="tablaAgendaBody">
+          <tr>
+            <td colspan="5" class="empty-cart">No hay citas registradas para hoy.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- MÓDULO 2: TUTORES Y PACIENTES -->
+  <section id="module-tutores" class="module-section" style="display: none;">
+    <div class="card">
+      <h2>🐾 Registro de Tutores y Pacientes</h2>
+      <div class="grid-form">
+        <div class="form-group">
+          <label>RUT Tutor</label>
+          <input type="text" id="tutorRut" placeholder="Ej: 12.345.678-9">
+        </div>
+        <div class="form-group">
+          <label>Nombre Completo Tutor</label>
+          <input type="text" id="tutorNombre" placeholder="Ej: Juan Pérez">
+        </div>
+        <div class="form-group">
+          <label>Teléfono Contacto</label>
+          <input type="text" id="tutorTelefono" placeholder="+56 9 1234 5678">
+        </div>
+        <div class="form-group">
+          <label>Nombre de la Mascota</label>
+          <input type="text" id="mascotaNombre" placeholder="Ej: Firulais">
+        </div>
+        <div class="form-group">
+          <label>Especie / Raza</label>
+          <input type="text" id="mascotaEspecie" placeholder="Ej: Canino / Golden Retriever">
+        </div>
+      </div>
+      <button class="btn-primary" onclick="guardarTutorPaciente()">Registrar Tutor y Paciente</button>
+    </div>
+  </section>
+
+  <!-- MÓDULO 3: FICHA CLÍNICA -->
+  <section id="module-ficha" class="module-section" style="display: none;">
+    <div class="card">
+      <h2>🩺 Ficha Clínica Veterinaria</h2>
+      <div class="grid-form">
+        <div class="form-group">
+          <label>Buscar Paciente</label>
+          <input type="text" id="fichaBuscarMascota" placeholder="Nombre de mascota o RUT Tutor...">
+        </div>
+        <div class="form-group">
+          <label>Anamnesis / Motivo Consulta</label>
+          <textarea id="fichaAnamnesis" rows="3" placeholder="Síntomas, observaciones iniciales..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Diagnóstico y Tratamiento</label>
+          <textarea id="fichaTratamiento" rows="3" placeholder="Receta médica, medicamentos prescriptos..."></textarea>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="guardarFichaClinica()">Guardar Ficha Clínica</button>
+    </div>
+  </section>
+
+  <!-- MÓDULO 4: PELUQUERÍA -->
+  <section id="module-peluqueria" class="module-section" style="display: none;">
+    <div class="card">
+      <h2>✂️ Registro de Peluquería y Baños</h2>
+      <div class="grid-form">
+        <div class="form-group">
+          <label>Nombre Paciente</label>
+          <input type="text" id="peluMascota" placeholder="Ej: Tom">
+        </div>
+        <div class="form-group">
+          <label>Servicio Realizado</label>
+          <select id="peluServicio">
+            <option value="Baño Sanitario">Baño Sanitario</option>
+            <option value="Corte de Pelo + Baño">Corte de Pelo + Baño</option>
+            <option value="Corte de Uñas / Limpieza Oídos">Corte de Uñas / Limpieza Oídos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observaciones / Manta / Pelo</label>
+          <input type="text" id="peluNotas" placeholder="Ej: Muestra agresividad con secador">
+        </div>
+      </div>
+      <button class="btn-primary" onclick="guardarServicioPeluqueria()">Registrar Servicio</button>
+    </div>
+  </section>
+
+  <!-- MÓDULO 5: INVENTARIO -->
   <section id="module-inventario" class="module-section" style="display: none;">
     <div class="card">
       <h2>📦 Nuevo Producto / Actualizar Stock</h2>
-      <form id="formInventario" class="grid-form">
+      <form id="formInventario" class="grid-form" onsubmit="return false;">
         <div class="form-group">
           <label>Código de Barras / SKU</label>
           <input type="text" id="invSku" placeholder="Ej: 780123456789">
@@ -73,7 +205,7 @@
         </div>
       </form>
 
-      <!-- Banner de Cálculo Dinámico de Inventario -->
+      <!-- Banner de Cálculo Dinámico de Valores -->
       <div class="info-banner">
         <span>💵 <strong>Valor Venta Neto:</strong> $<span id="lblNeto">0</span></span>
         <span>📄 <strong>IVA (19%):</strong> $<span id="lblIva">0</span></span>
@@ -99,38 +231,36 @@
           </tr>
         </thead>
         <tbody id="tablaInventarioBody">
-          <!-- Carga dinámicamente -->
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- CONTENIDO MÓDULO POS / CAJA -->
-  <section id="module-pos" class="module-section">
+  <!-- MÓDULO 6: POS / CAJA -->
+  <section id="module-pos" class="module-section" style="display: none;">
     <div class="pos-container">
       
-      <!-- Panel Izquierdo: Buscador y Escáner -->
       <div class="card pos-left">
         <h2>🛒 Punto de Venta</h2>
-        
         <div class="pos-search-wrapper">
           <div class="search-input-group">
             <span class="search-icon">🔍</span>
-            <input type="text" id="posSearchInput" placeholder="Buscar por nombre o código..." autocomplete="off" autofocus>
-            <button class="btn-camera" onclick="abrirCamaraEscaner()" title="Escanear con Cámara">📷 Escanear</button>
+            <input type="text" id="posSearchInput" placeholder="Buscar por nombre o código..." autocomplete="off">
+            <button class="btn-secundario" onclick="toggleScannerCamara()">📷 Escanear</button>
           </div>
-          
-          <!-- Menú Flotante de Autocompletado -->
           <div id="searchResultsDropdown" class="dropdown-results" style="display: none;"></div>
+        </div>
+        
+        <!-- Escáner QR/Cámara opcional -->
+        <div id="reader-wrapper" style="display: none; margin-top: 15px;">
+          <div id="reader" style="width: 100%;"></div>
         </div>
 
         <p class="help-text">💡 Tip: Si usas una pistola lectora USB/Bluetooth, solo escanea el código directamente.</p>
       </div>
 
-      <!-- Panel Derecho: Carrito y Detalle de Venta -->
       <div class="card pos-right">
         <h2>📋 Detalle de Venta</h2>
-        
         <div id="carritoContainer">
           <table class="cart-table" id="cartTable">
             <thead>
@@ -145,10 +275,8 @@
               </tr>
             </thead>
             <tbody id="cartTableBody">
-              <!-- Se llena al agregar items -->
             </tbody>
           </table>
-
           <div id="emptyCartMsg" class="empty-cart">El carrito está vacío</div>
         </div>
 
@@ -170,6 +298,7 @@
             <label>Método de Pago:</label>
             <select id="posMetodoPago">
               <option value="Efectivo">💵 Efectivo</option>
+
               <option value="Tarjeta Débito/Crédito">💳 Tarjeta Débito / Crédito</option>
               <option value="Transferencia">📲 Transferencia Billetera</option>
             </select>
@@ -181,15 +310,6 @@
 
     </div>
   </section>
-
-  <!-- MODAL CAMARA PARA ESCANEO -->
-  <div id="cameraModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-      <h3>Escanear Código de Barras</h3>
-      <div id="reader" style="width: 100%; max-width: 350px; margin: 0 auto;"></div>
-      <button class="btn-danger margin-top" onclick="cerrarCamaraEscaner()">Cerrar Cámara</button>
-    </div>
-  </div>
 
   <script src="app.js"></script>
 </body>
