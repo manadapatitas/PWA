@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agendar Hora — Manada Patitas</title>
+<link rel="icon" href="../favicon.jpg">
+<link rel="stylesheet" href="estilos-tienda.css">
+</head>
+<body>
+
+  <nav class="nav-principal">
+    <div class="nav-interior">
+      <a href="index.html" class="marca"><img src="../icon-512x512.png" alt="Manada Patitas" class="logo-nav"> Manada Patitas</a>
+      <div class="nav-links" id="nav-links">
+        <a href="index.html">Inicio</a>
+        <a href="tienda.html">Tienda</a>
+        <a href="agenda.html" class="activo">Agendar Hora</a>
+        <a href="nosotros.html">Nosotros</a>
+        <a href="blog.html">Consejos</a>
+      </div>
+      <div class="nav-cta">
+        <button id="btn-abrir-carrito" class="btn btn-secundario">🛒 <span id="badge-carrito" class="badge-cantidad oculto">0</span></button>
+        <button class="nav-toggle" id="nav-toggle">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <section class="seccion" style="padding-bottom:0;">
+    <div class="contenedor">
+      <span class="eyebrow">Consulta · Vacuna · Peluquería</span>
+      <h1 style="font-size:2.2rem; margin:10px 0 6px;">Agenda tu hora</h1>
+      <p class="lead">Elige el día y la hora que más te acomode. Confirmamos tu reserva al instante.</p>
+    </div>
+  </section>
+
+  <section class="seccion" style="max-width:760px; margin:0 auto;">
+    <div class="contenedor">
+
+      <div id="formulario-reserva-contenedor">
+        <div class="tarjeta">
+          <h3>1. Elige fecha y hora</h3>
+          <div class="campo mt-24" style="max-width:240px;">
+            <label for="agenda-fecha-publica">Fecha</label>
+            <input type="date" id="agenda-fecha-publica">
+          </div>
+          <div class="horarios-grid-publico" id="horarios-grid-publico"></div>
+          <p id="resumen-hora-seleccionada" style="font-weight:700; color:var(--teal-800);">Elige un horario disponible arriba ⬆️</p>
+        </div>
+
+        <form id="formulario-reserva" class="tarjeta mt-24">
+          <h3>2. Tus datos</h3>
+          <div class="form-grid-2 mt-24">
+            <div class="campo">
+              <label for="reserva-nombre">Tu nombre</label>
+              <input type="text" id="reserva-nombre" required>
+            </div>
+            <div class="campo">
+              <label for="reserva-rut">RUT</label>
+              <input type="text" id="reserva-rut" placeholder="Ej: 12345678-K" required>
+            </div>
+          </div>
+          <div class="campo">
+            <label for="reserva-telefono">Teléfono de contacto</label>
+            <input type="tel" id="reserva-telefono" placeholder="+56 9 ..." required>
+          </div>
+          <div class="form-grid-2">
+            <div class="campo">
+              <label for="reserva-mascota">Nombre de tu mascota</label>
+              <input type="text" id="reserva-mascota" required>
+            </div>
+            <div class="campo">
+              <label for="reserva-raza">Especie / Raza</label>
+              <input type="text" id="reserva-raza" placeholder="Ej: Canino / Poodle">
+            </div>
+          </div>
+          <div class="campo">
+            <label for="reserva-servicio">Tipo de atención</label>
+            <select id="reserva-servicio">
+              <option value="Consulta Médica">Consulta médica</option>
+              <option value="Vacunación / Desparasitación">Vacunación / Desparasitación</option>
+              <option value="Peluquería / Baño">Peluquería / Baño</option>
+              <option value="Control">Control post-atención</option>
+            </select>
+          </div>
+          <button type="submit" id="btn-confirmar-reserva" class="btn btn-primario btn-block mt-24" disabled>Confirmar reserva</button>
+        </form>
+      </div>
+
+      <div id="confirmacion-reserva" class="tarjeta oculto centrado" style="padding:48px 24px;">
+        <div style="font-size:3rem;">🎉</div>
+        <h2 style="margin:14px 0 10px;">¡Reserva confirmada!</h2>
+        <p id="mensaje-confirmacion-reserva" class="lead" style="margin:0 auto 20px;"></p>
+        <a href="index.html" class="btn btn-secundario">Volver al inicio</a>
+      </div>
+
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <div class="overlay-carrito" id="overlay-carrito"></div>
+  <div class="panel-carrito" id="panel-carrito">
+    <div class="carrito-cabecera">
+      <h3>Tu carrito</h3>
+      <button id="btn-cerrar-carrito" class="btn btn-fantasma" style="padding:8px 14px;">✕</button>
+    </div>
+    <div class="carrito-items" id="carrito-items-lista"></div>
+    <div class="carrito-footer">
+      <div class="carrito-total-row"><span>Total</span><span id="carrito-total" class="dato-mono">$0</span></div>
+      <a href="tienda.html#checkout" class="btn btn-primario btn-block" id="btn-ir-a-pagar">Ir a pagar</a>
+    </div>
+  </div>
+
+  <script src="tienda.js"></script>
+  <script src="componentes.js"></script>
+</body>
+</html>
