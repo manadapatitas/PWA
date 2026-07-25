@@ -24,6 +24,11 @@ let listaPeluqueriaGlobal = [];
 let listaInventarioGlobal = [];
 let carritoPOS = [];
 
+// Estado del Dashboard (solo Administrador)
+let datosDashboard = null;
+let chartMasVendidos = null;
+let chartMetodoPago = null;
+
 // Estado temporal del modal de detalle de producto (POS)
 let productoSeleccionadoPOS = null;
 let cantidadSeleccionadaPOS = 1;
@@ -214,6 +219,13 @@ function cambiarPestana(idPestana) {
     return;
   }
 
+  // El Dashboard es exclusivo de Administrador: refuerzo en el frontend además
+  // del bloqueo real que ya existe en el backend (tienePermiso en codigo.gs).
+  if (idPestana === 'dashboard' && usuarioActual.rol !== 'admin') {
+    alert('Esta sección es exclusiva del perfil Administrador.');
+    return;
+  }
+
   const secciones = document.querySelectorAll('.tab-content');
   secciones.forEach(sec => {
     sec.classList.add('hidden');
@@ -241,6 +253,9 @@ function cambiarPestana(idPestana) {
     renderizarTablaInventario();
   } else if (idPestana === 'caja') {
     renderizarPOS();
+  } else if (idPestana === 'dashboard') {
+    const selectPeriodo = document.getElementById('dashboard-filtro-periodo');
+    cargarDashboard(selectPeriodo ? selectPeriodo.value : 30);
   }
 }
 
@@ -1316,4 +1331,150 @@ async function procesarVentaPOS() {
   } catch (err) {
     alert("Error procesando venta: " + err.message);
   }
+}
+
+// -----------------------------------------------------------------
+// DASHBOARD DE NEGOCIO (solo Administrador)
+// -----------------------------------------------------------------
+async function cargarDashboard(dias = 30) {
+  if (!usuarioActual || usuarioActual.rol !== 'admin') return;
+
+  try {
+    const json = await enviarFormularioBackend('obtenerDashboard', { dias });
+    datosDashboard = json;
+    renderizarDashboard();
+  } catch (err) {
+    alert('Error al cargar el dashboard: ' + err.message);
+  }
+}
+
+function formatearMoneda(valor) {
+  return `$${Math.round(Number(valor) || 0).toLocaleString('es-CL')}`;
+}
+
+function renderizarDashboard() {
+  if (!datosDashboard) return;
+
+  // --- KPIs ---
+  const kpis = datosDashboard.kpis || {};
+  setTexto('kpi-ingresos', formatearMoneda(kpis.ingresosTotales));
+  setTexto('kpi-margen', formatearMoneda(kpis.margenTotalGeneral));
+  setTexto('kpi-ticket', formatearMoneda(kpis.ticketPromedio));
+  setTexto('kpi-numero-ventas', (kpis.numeroVentas || 0).toString());
+  setTexto('kpi-unidades', (kpis.unidadesTotales || 0).toString());
+  setTexto('kpi-valor-inventario', formatearMoneda(kpis.valorInventarioCosto));
+
+  // --- Tablas ---
+  llenarTablaDashboard('tabla-mas-vendidos-body', datosDashboard.masVendidos, (p) => `
+    <td><strong>${p.nombre || '-'}</strong><br><small style="color:#777;">${p.categoria || ''}</small></td>
+    <td>${p.unidades} u.</td>
+    <td>${formatearMoneda(p.ingresos)}</td>
+  `, 'Aún no hay ventas registradas en este período.');
+
+  llenarTablaDashboard('tabla-mayor-margen-body', datosDashboard.mayorMargen, (p) => `
+    <td><strong>${p.nombre || '-'}</strong><br><small style="color:#777;">${p.categoria || ''}</small></td>
+    <td style="color:#1e8449; font-weight:bold;">${formatearMoneda(p.margenTotal)}</td>
+    <td>${p.unidades} u.</td>
+  `, 'Aún no hay ventas registradas en este período.');
+
+  llenarTablaDashboard('tabla-rotacion-baja-body', datosDashboard.rotacionBaja, (p) => `
+    <td><strong>${p.nombre || '-'}</strong><br><small style="color:#777;">${p.categoria || ''}</small></td>
+    <td>${p.stock} u.</td>
+    <td style="color:${p.unidadesVendidas === 0 ? '#e74c3c' : '#d68910'};">${p.unidadesVendidas} u.</td>
+  `, 'No hay productos con rotación baja en este período. 🎉');
+
+  llenarTablaDashboard('tabla-proximos-vencer-body', datosDashboard.proximosAVencer, (p) => `
+    <td><strong>${p.nombre || '-'}</strong><br><small style="color:#777;">${p.categoria || ''}</small></td>
+    <td>${p.stock} u.</td>
+    <td style="color:${p.diasRestantes < 0 ? '#e74c3c' : '#d68910'};">${formatearFechaCorta(p.fechaVencimiento)} (${p.diasRestantes < 0 ? 'vencido' : p.diasRestantes + ' días'})</td>
+  `, 'No hay productos próximos a vencer.');
+
+  llenarTablaDashboard('tabla-candidatos-liquidar-body', datosDashboard.candidatosLiquidar, (p) => `
+    <td><strong>${p.nombre || '-'}</strong><br><small style="color:#777;">${p.categoria || ''}</small></td>
+    <td>${p.stock} u.</td>
+    <td style="color:#d35400; font-weight:bold;">${formatearFechaCorta(p.fechaVencimiento)} (${p.diasRestantes < 0 ? 'vencido' : p.diasRestantes + ' días'})</td>
+  `, 'Sin candidatos por ahora.');
+
+  llenarTablaDashboard('tabla-stock-critico-body', datosDashboard.stockCritico, (p) => `
+    <td><strong>${p.nombre || '-'}</strong><br><small style="color:#777;">${p.categoria || ''}</small></td>
+    <td style="color:#e74c3c; font-weight:bold;">${p.stock} u.</td>
+    <td>${p.stockCritico} u.</td>
+  `, 'Sin productos en stock crítico. 🎉');
+
+  llenarTablaDashboard('tabla-ranking-vendedores-body', datosDashboard.rankingVendedores, (v) => `
+    <td><strong>${v.nombre || '-'}</strong></td>
+    <td>${v.numeroVentas} venta(s)</td>
+    <td>${formatearMoneda(v.ingresos)}</td>
+  `, 'Sin ventas registradas en este período.');
+
+  // --- Gráficos ---
+  renderizarGraficoMasVendidos(datosDashboard.masVendidos);
+  renderizarGraficoMetodoPago(datosDashboard.ventasPorMetodoPago);
+}
+
+function llenarTablaDashboard(idTbody, filas, construirFila, mensajeVacio) {
+  const tbody = document.getElementById(idTbody);
+  if (!tbody) return;
+
+  if (!filas || filas.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#777;">${mensajeVacio}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filas.map(f => `<tr>${construirFila(f)}</tr>`).join('');
+}
+
+function formatearFechaCorta(fechaStr) {
+  if (!fechaStr) return '-';
+  const fecha = new Date(fechaStr.toString().substring(0, 10) + 'T00:00:00');
+  if (isNaN(fecha.getTime())) return fechaStr;
+  return fecha.toLocaleDateString('es-CL');
+}
+
+function renderizarGraficoMasVendidos(masVendidos) {
+  const canvas = document.getElementById('chart-mas-vendidos');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (chartMasVendidos) chartMasVendidos.destroy();
+
+  const datos = masVendidos && masVendidos.length > 0 ? masVendidos : [];
+  chartMasVendidos = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: datos.map(p => p.nombre || '-'),
+      datasets: [{
+        label: 'Unidades vendidas',
+        data: datos.map(p => p.unidades),
+        backgroundColor: '#008080'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
+function renderizarGraficoMetodoPago(ventasPorMetodoPago) {
+  const canvas = document.getElementById('chart-metodo-pago');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (chartMetodoPago) chartMetodoPago.destroy();
+
+  const datos = ventasPorMetodoPago && ventasPorMetodoPago.length > 0 ? ventasPorMetodoPago : [];
+  chartMetodoPago = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: datos.map(m => m.metodo),
+      datasets: [{
+        data: datos.map(m => m.total),
+        backgroundColor: ['#008080', '#2c3e50', '#d68910', '#8e44ad', '#c0392b']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
 }
