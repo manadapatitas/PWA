@@ -32,7 +32,7 @@ body {
 }
 
 /* ==========================================
-   HEADER Y ENCABEZADO CON LOGO
+   HEADER Y LOGO
    ========================================== */
 .main-header {
   background-color: var(--card-bg);
@@ -54,10 +54,9 @@ body {
 }
 
 .brand-logo {
-  height: 50px;
+  max-height: 50px;
   width: auto;
   object-fit: contain;
-  border-radius: 6px;
 }
 
 .logo-container h1 {
@@ -120,6 +119,14 @@ body {
   border-color: var(--primary-color);
 }
 
+.module-section {
+  display: none;
+}
+
+.module-section.active {
+  display: block;
+}
+
 /* ==========================================
    TARJETAS Y FORMULARIOS
    ========================================== */
@@ -155,7 +162,7 @@ body {
 
 .grid-form {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 15px;
   margin-bottom: 15px;
 }
@@ -164,6 +171,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
 }
 
 .form-group label {
@@ -189,7 +200,16 @@ body {
   border-color: var(--primary-color);
 }
 
-/* BANNER DE CÁLCULO EN INVENTARIO */
+.input-with-action {
+  display: flex;
+  gap: 8px;
+}
+
+.input-with-action input {
+  flex: 1;
+}
+
+/* BANNER CÁLCULO INVENTARIO */
 .info-banner {
   background-color: var(--primary-light);
   border-left: 4px solid var(--primary-color);
@@ -200,6 +220,12 @@ body {
   flex-wrap: wrap;
   margin-bottom: 15px;
   font-size: 0.9rem;
+  color: var(--primary-dark);
+}
+
+.highlight-price {
+  font-size: 1.1rem;
+  font-weight: bold;
   color: var(--primary-dark);
 }
 
@@ -284,9 +310,15 @@ body {
 
 .badge {
   padding: 4px 8px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.text-center {
+  text-align: center;
 }
 
 /* ==========================================
@@ -316,6 +348,7 @@ body {
   padding: 6px 12px;
   border-radius: var(--radius);
   background: #fff;
+  margin-top: 5px;
 }
 
 .search-input-group input {
@@ -403,4 +436,24 @@ body {
 
 .total-amount {
   color: var(--primary-color);
+}
+
+/* MODAL DE ESCÁNER */
+.modal-overlay {
+  position: fixed;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: var(--radius);
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
 }
