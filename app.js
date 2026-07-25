@@ -36,12 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
   configurarFechaPorDefecto();
   configurarEventosDesgloseIVA();
   configurarEventosPOS();
-  mostrarModalLogin();
+  intentarRestaurarSesion();
 });
 
 // -----------------------------------------------------------------
 // AUTENTICACIÓN
 // -----------------------------------------------------------------
+const CLAVE_STORAGE_SESION = 'mp_sesion';
+
 function inicializarAutenticacion() {
   const formLogin = document.getElementById('form-login');
   if (formLogin) {
@@ -51,24 +53,74 @@ function inicializarAutenticacion() {
       return false;
     };
   }
+
+  const inputRut = document.getElementById('login-rut');
+  const inputPin = document.getElementById('login-pin');
+  if (inputRut) {
+    inputRut.addEventListener('blur', () => formatearInputRut(inputRut));
+    inputRut.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        formatearInputRut(inputRut);
+        if (inputPin) inputPin.focus();
+      }
+    });
+  }
+}
+
+// Al cargar la página, si ya había una sesión guardada en este navegador
+// (misma pestaña/ventana), se reutiliza en vez de pedir el PIN de nuevo.
+// Esto evita que un simple F5 (o que el navegador recargue la app en
+// segundo plano en el celular) obligue a volver a iniciar sesión.
+async function intentarRestaurarSesion() {
+  const guardada = sessionStorage.getItem(CLAVE_STORAGE_SESION);
+  if (!guardada) {
+    mostrarModalLogin();
+    return;
+  }
+
+  try {
+    const sesion = JSON.parse(guardada);
+    sessionToken = sesion.token;
+    usuarioActual = { rol: sesion.rol, nombre: sesion.nombre };
+
+    aplicarSesionEnPantalla(sesion.rol, sesion.nombre);
+    cerrarModalLogin();
+
+    // Se valida contra el backend al cargar los datos: si el token ya
+    // expiró, cargarDatosBackend() detecta el error y llama a cerrarSesion().
+    await cargarDatosBackend();
+
+    const pestanaDefault = (CONFIG_ROLES[sesion.rol] && CONFIG_ROLES[sesion.rol].pestanaDefault) || 'agenda';
+    if (usuarioActual) cambiarPestana(pestanaDefault);
+  } catch (e) {
+    sessionStorage.removeItem(CLAVE_STORAGE_SESION);
+    mostrarModalLogin();
+  }
+}
+
+function aplicarSesionEnPantalla(rol, nombre) {
+  const badgeRol = document.getElementById('usuario-badge');
+  if (badgeRol) badgeRol.innerText = nombre;
+  document.body.className = `autenticado rol-${rol}`;
 }
 
 async function procesarLogin() {
+  const inputRut = document.getElementById('login-rut');
   const inputPin = document.getElementById('login-pin');
-  const selectRol = document.getElementById('login-rol');
   const btnSubmit = document.querySelector('#form-login button[type="submit"]');
 
+  const rutIngresado = inputRut ? inputRut.value.trim() : "";
   const pinIngresado = inputPin ? inputPin.value.trim() : "";
-  const rolClave = selectRol ? selectRol.value : "admin";
 
-  if (!pinIngresado) return;
+  if (!rutIngresado || !pinIngresado) return;
 
   if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerText = "Verificando..."; }
 
   try {
     const res = await fetch(URL_WEB_APP, {
       method: 'POST',
-      body: JSON.stringify({ accion: "login", rol: rolClave, pin: pinIngresado })
+      body: JSON.stringify({ accion: "login", rut: rutIngresado, pin: pinIngresado })
     });
     const texto = await res.text();
     let json;
@@ -83,19 +135,23 @@ async function procesarLogin() {
       sessionToken = json.token;
       usuarioActual = { rol: json.rol, nombre: json.nombre };
 
-      const badgeRol = document.getElementById('usuario-badge');
-      if (badgeRol) badgeRol.innerText = usuarioActual.nombre;
+      sessionStorage.setItem(CLAVE_STORAGE_SESION, JSON.stringify({
+        token: json.token,
+        rol: json.rol,
+        nombre: json.nombre
+      }));
 
-      document.body.className = `autenticado rol-${json.rol}`;
+      aplicarSesionEnPantalla(json.rol, json.nombre);
 
       cerrarModalLogin();
       if (inputPin) inputPin.value = '';
+      if (inputRut) inputRut.value = '';
 
       const pestanaDefault = (CONFIG_ROLES[json.rol] && CONFIG_ROLES[json.rol].pestanaDefault) || 'agenda';
       await cargarDatosBackend();
       cambiarPestana(pestanaDefault);
     } else {
-      alert("⚠️ " + (json.message || "PIN incorrecto."));
+      alert("⚠️ " + (json.message || "RUT o PIN incorrecto."));
       if (inputPin) {
         inputPin.value = '';
         inputPin.focus();
@@ -123,6 +179,7 @@ function mostrarModalLogin() {
 function cerrarSesion() {
   usuarioActual = null;
   sessionToken = null;
+  sessionStorage.removeItem(CLAVE_STORAGE_SESION);
   const badgeRol = document.getElementById('usuario-badge');
   if (badgeRol) badgeRol.innerText = "Invitado";
   mostrarModalLogin();
@@ -525,7 +582,7 @@ function renderizarHistorialClinicoPaciente(rutTutor, nombreMascota) {
     const card = document.createElement('div');
     card.className = 'card-historial';
     card.innerHTML = `
-      <div style="font-size:0.85rem; color:#666;">📅 ${c.fecha || '-'} | 🐾 <strong>${c.mascota || nombreMascota}</strong></div>
+      <div style="font-size:0.85rem; color:#666;">📅 ${c.fecha || '-'} | 🐾 <strong>${c.mascota || nombreMascota}</strong>${c.atendido_por ? ` | 👩‍⚕️ ${c.atendido_por}` : ''}</div>
       <div><strong>🌡️ Temp:</strong> ${c.temperatura || '-'} °C | <strong>⚖️ Peso:</strong> ${c.peso || '-'} kg</div>
       <div><strong>🩺 Diagnóstico:</strong> ${c.diagnostico || '-'}</div>
       <div><strong>💊 Receta:</strong> ${c.receta || '-'}</div>
