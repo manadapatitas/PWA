@@ -30,7 +30,7 @@
     <div class="modal-content">
       <h2>Iniciar Sesión</h2>
       <p>Selecciona tu rol e ingresa tu PIN de acceso</p>
-      
+
       <form id="form-login">
         <div class="form-group">
           <label for="login-rol">Perfil / Rol:</label>
@@ -83,7 +83,7 @@
             </div>
             <div class="form-group">
               <label>Fecha y Hora Seleccionada</label>
-              <input type="text" id="agenda-fecha" readonly placeholder="Haz clic en un bloque abajo ⬇️" required style="background-color: #f8f9fa; cursor: not-allowed; font-weight: bold; color: #008080;">
+              <input type="text" id="agenda-fecha" readonly placeholder="Haz clic en un bloque abajo ⬇️" required class="readonly-field">
             </div>
             <div class="form-group">
               <label>Tipo de Servicio</label>
@@ -174,18 +174,18 @@
               <input type="number" step="0.1" id="cli-temp" placeholder="Ej: 38.5">
             </div>
             <div class="form-group">
-              <label>Peso Actual (kg)</label>
+              <label>Peso (kg)</label>
               <input type="number" step="0.1" id="cli-peso" placeholder="Ej: 8.5">
             </div>
           </div>
 
-          <div id="cli-info-paciente" class="info-banner hidden">
-            <span>🐾 <strong>Mascota:</strong> <span id="lbl-cli-mascota">-</span></span> | 
-            <span>🧬 <strong>Raza:</strong> <span id="lbl-cli-raza">-</span></span> | 
-            <span>🎂 <strong>Edad:</strong> <span id="lbl-cli-edad">-</span></span>
+          <div id="cli-info-paciente" class="card hidden" style="background:#e0f2f1; margin-bottom:12px;">
+            <div><strong>🐾 Mascota:</strong> <span id="lbl-cli-mascota">-</span></div>
+            <div><strong>🧬 Raza:</strong> <span id="lbl-cli-raza">-</span></div>
+            <div><strong>🎂 Edad:</strong> <span id="lbl-cli-edad">-</span></div>
           </div>
 
-          <div class="form-group" style="margin-bottom: 12px; margin-top: 15px;">
+          <div class="form-group" style="margin-bottom: 12px;">
             <label>Anamnesis y Diagnóstico</label>
             <textarea id="cli-diagnostico" rows="3" placeholder="Motivo de consulta y diagnóstico..." required></textarea>
           </div>
@@ -277,10 +277,10 @@
             </div>
             <div class="form-group">
               <label>Precio Venta Final (Bruto $)</label>
-              <input type="number" id="inv-precio" placeholder="Ej: 15470" required>
+              <input type="number" id="inv-precio" placeholder="Se calcula automáticamente" readonly class="readonly-field" title="Se calcula automáticamente a partir del costo y el margen">
             </div>
             <div class="form-group">
-              <label>Stock Disponible</label>
+              <label>Stock a Ingresar</label>
               <input type="number" id="inv-stock" placeholder="Ej: 10" required>
             </div>
           </div>
@@ -291,6 +291,7 @@
             <div>🧾 <strong>IVA (19%):</strong> <span id="lbl-inv-iva">$0</span></div>
             <div>🏷️ <strong>Precio Final Bruto:</strong> <strong id="lbl-inv-total" style="color:#008080;">$0</strong></div>
           </div>
+          <p class="form-hint">Si ingresas un SKU que ya existe, se sumará el stock nuevo al stock actual y se actualizará el precio.</p>
 
           <button type="submit" class="btn-primary" style="margin-top: 15px;">Agregar / Actualizar Inventario</button>
         </form>
@@ -324,8 +325,9 @@
       <div class="pos-container">
         <div class="card pos-catalog">
           <h3>🛒 Punto de Venta</h3>
-          <div class="form-group" style="margin-bottom: 15px;">
-            <input type="text" id="pos-buscar" placeholder="🔍 Buscar por nombre o código..." oninput="filtrarProductosPOS()">
+          <div class="pos-search-row">
+            <input type="text" id="pos-buscar" placeholder="🔍 Escanea o escribe nombre / SKU y presiona Enter..." oninput="filtrarProductosPOS()">
+            <button type="button" id="btn-escanear-camara" class="btn-scan" title="Escanear con la cámara">📷</button>
           </div>
           <div id="pos-grid-productos" class="pos-grid"></div>
         </div>
@@ -335,13 +337,13 @@
           <div id="pos-items-carrito" class="cart-items">
             <p style="color: #777; text-align: center; margin-top: 20px;">El carrito está vacío</p>
           </div>
-          
+
           <div class="cart-summary">
             <div class="summary-row">
               <span>Total:</span>
               <strong id="pos-total-monto" style="font-size: 1.4rem; color: #008080;">$0</strong>
             </div>
-            
+
             <div class="form-group" style="margin-top: 10px;">
               <label>Método de Pago:</label>
               <select id="pos-metodo-pago">
@@ -359,6 +361,46 @@
 
   </main>
 
+  <!-- MODAL: FICHA DE PRODUCTO (SKU, descripción, neto, IVA, precio, cantidad) -->
+  <div id="modal-detalle-producto" class="modal-overlay hidden">
+    <div class="modal-content modal-detalle-content">
+      <h2>🛒 Agregar producto</h2>
+      <div class="detalle-grid">
+        <div><strong>SKU:</strong> <span id="det-sku">-</span></div>
+        <div><strong>Categoría:</strong> <span id="det-categoria">-</span></div>
+        <div style="grid-column: 1 / -1;"><strong>Producto:</strong> <span id="det-nombre">-</span></div>
+        <div><strong>Valor Neto:</strong> <span id="det-neto">$0</span></div>
+        <div><strong>IVA (19%):</strong> <span id="det-iva">$0</span></div>
+        <div style="grid-column: 1 / -1;"><strong>Precio Venta:</strong> <span id="det-precio" style="color:#008080; font-weight:bold;">$0</span></div>
+        <div style="grid-column: 1 / -1; color:#666; font-size:0.85rem;"><span id="det-stock">-</span></div>
+      </div>
+
+      <label style="display:block; text-align:center; font-weight:600; margin-top:10px;">Cantidad</label>
+      <div class="stepper">
+        <button type="button" onclick="cambiarCantidadDetalle(-1)">-</button>
+        <input type="number" id="det-cantidad" value="1" min="1" oninput="actualizarCantidadDetalleManual(this.value)">
+        <button type="button" onclick="cambiarCantidadDetalle(1)">+</button>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="button" id="btn-cerrar-detalle" class="btn-secondary" style="flex:1;">Cancelar</button>
+        <button type="button" id="btn-agregar-detalle" class="btn-primary" style="flex:1;" onclick="confirmarAgregarDetalle()">Agregar al carrito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ESCÁNER DE CÁMARA -->
+  <div id="modal-escaner" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h2>📷 Escanear código de barras</h2>
+      <p style="margin-bottom:10px; color:#666; font-size:0.9rem;">Apunta la cámara al código de barras del producto.</p>
+      <div id="lector-camara"></div>
+      <button type="button" id="btn-cerrar-escaner" class="btn-danger" style="width:100%; margin-top:15px;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Librería para escaneo de códigos de barras / QR con la cámara -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
