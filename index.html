@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manada Patitas - Gestión Vet & Petshop</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260726">
 </head>
 <body>
 
@@ -29,17 +29,12 @@
   <div id="modal-login" class="modal-overlay">
     <div class="modal-content">
       <h2>Iniciar Sesión</h2>
-      <p>Selecciona tu rol e ingresa tu PIN de acceso</p>
+      <p>Ingresa tu RUT y tu PIN de acceso personal</p>
 
       <form id="form-login">
         <div class="form-group">
-          <label for="login-rol">Perfil / Rol:</label>
-          <select id="login-rol">
-            <option value="admin">🛡️ Administrador / Dirección</option>
-            <option value="veterinaria">🩺 Médico Veterinario</option>
-            <option value="peluqueria">✂️ Peluquería / Estética</option>
-            <option value="caja">🛒 Recepción / Petshop (Caja)</option>
-          </select>
+          <label for="login-rut">RUT</label>
+          <input type="text" id="login-rut" placeholder="Ej: 12345678-K" required autocomplete="off">
         </div>
 
         <div class="form-group">
@@ -428,10 +423,17 @@
     </div>
   </div>
 
+  <!--
+    IMPORTANTE: cada vez que subas una nueva versión de app.js o styles.css a GitHub,
+    cambia el número "?v=20260726" de sus <link>/<script> más abajo (por ejemplo a
+    "?v=20260727" o cualquier texto distinto). Esto obliga a los navegadores (sobre
+    todo en celulares) a descargar la versión nueva con un F5 normal, sin necesidad
+    de un refresco forzado (Ctrl+F5) que además cierra la sesión del usuario.
+  -->
   <!-- Librería para escaneo de códigos de barras / QR con la cámara -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Librería para leer archivos Excel/CSV en el navegador (carga masiva de inventario) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=20260726"></script>
 </body>
 </html>
