@@ -432,6 +432,20 @@ async function guardarTutor(e) {
 
   try {
     const json = await enviarFormularioBackend('guardarTutor', payload);
+
+    if (json.status === 'confirmar') {
+      const aceptaActualizar = confirm(json.message);
+      if (aceptaActualizar) {
+        const json2 = await enviarFormularioBackend('guardarTutor', { ...payload, confirmar_actualizacion: true });
+        alert('🐾 ' + json2.message);
+        document.getElementById('form-tutor').reset();
+        await cargarDatosBackend();
+      } else {
+        alert('No se modificó la ficha existente.');
+      }
+      return;
+    }
+
     alert('🐾 ' + json.message);
     document.getElementById('form-tutor').reset();
     await cargarDatosBackend();
@@ -606,35 +620,97 @@ async function guardarPeluqueria(e) {
 function configurarEventosDesgloseIVA() {
   const inputCosto = document.getElementById('inv-costo');
   const inputMargen = document.getElementById('inv-margen');
+  const selectRedondeo = document.getElementById('inv-redondeo');
 
   if (inputCosto) inputCosto.addEventListener('input', calcularPrecioVentaSugerido);
   if (inputMargen) inputMargen.addEventListener('input', calcularPrecioVentaSugerido);
+  if (selectRedondeo) selectRedondeo.addEventListener('change', calcularPrecioVentaSugerido);
+}
+
+// Redondeo comercial: evita precios "feos" como $23.438 y sugiere algo
+// más natural para el cliente, terminado en 90 o 990.
+//   "cercano90"  -> sube al múltiplo de 100 más cercano y termina en 90 (ej. $23.490)
+//   "redondo990" -> sube al múltiplo de 1000 más cercano y termina en 990 (ej. $23.990)
+//   "ninguno"    -> deja el valor exacto calculado, sin redondear
+function redondearPrecioComercial(valor, modo) {
+  valor = Math.round(Number(valor) || 0);
+  if (valor <= 0) return 0;
+
+  if (modo === 'redondo990') {
+    let base = Math.ceil(valor / 1000) * 1000;
+    let sugerido = base - 10;
+    if (sugerido < valor) sugerido += 1000;
+    return sugerido;
+  }
+
+  if (modo === 'ninguno') return valor;
+
+  let base = Math.ceil(valor / 100) * 100;
+  let sugerido = base - 10;
+  if (sugerido < valor) sugerido += 100;
+  return sugerido;
+}
+
+function obtenerModoRedondeoSeleccionado() {
+  const select = document.getElementById('inv-redondeo');
+  return select ? select.value : 'cercano90';
 }
 
 function calcularPrecioVentaSugerido() {
   const costoNeto = parseFloat(document.getElementById('inv-costo').value) || 0;
   const margenPct = parseFloat(document.getElementById('inv-margen').value) || 0;
   const precioInput = document.getElementById('inv-precio');
+  const modoRedondeo = obtenerModoRedondeoSeleccionado();
 
   if (costoNeto > 0) {
     // 1. Neto = Costo + Margen %
     const valorVentaNeto = Math.round(costoNeto * (1 + (margenPct / 100)));
     // 2. IVA Chile 19%
     const iva = Math.round(valorVentaNeto * 0.19);
-    // 3. Bruto Total (siempre calculado, el campo es de solo lectura)
-    const precioFinalBruto = valorVentaNeto + iva;
+    // 3. Bruto Total exacto
+    const precioExacto = valorVentaNeto + iva;
+    // 4. Precio final con redondeo comercial aplicado (el que realmente se guarda)
+    const precioFinalBruto = redondearPrecioComercial(precioExacto, modoRedondeo);
 
     if (precioInput) precioInput.value = precioFinalBruto;
 
     document.getElementById('lbl-inv-neto').innerText = `$${valorVentaNeto.toLocaleString('es-CL')}`;
     document.getElementById('lbl-inv-iva').innerText = `$${iva.toLocaleString('es-CL')}`;
     document.getElementById('lbl-inv-total').innerText = `$${precioFinalBruto.toLocaleString('es-CL')}`;
+
+    const lblExacto = document.getElementById('lbl-inv-exacto');
+    if (lblExacto) {
+      lblExacto.innerText = modoRedondeo === 'ninguno'
+        ? ''
+        : `(precio exacto sin redondear: $${precioExacto.toLocaleString('es-CL')})`;
+    }
   } else {
     if (precioInput) precioInput.value = '';
     document.getElementById('lbl-inv-neto').innerText = `$0`;
     document.getElementById('lbl-inv-iva').innerText = `$0`;
     document.getElementById('lbl-inv-total').innerText = `$0`;
+    const lblExacto = document.getElementById('lbl-inv-exacto');
+    if (lblExacto) lblExacto.innerText = '';
   }
+}
+
+// Calcula cómo mostrar la fecha de vencimiento en la tabla: color verde si
+// falta bastante, naranja si vence en 30 días o menos, rojo si ya venció.
+// Esta es la base para las futuras alertas y el dashboard de vencimientos.
+function calcularEstadoVencimiento(fechaStr) {
+  if (!fechaStr) return { texto: '-', color: '#999' };
+
+  const fechaVenc = new Date(fechaStr.toString().substring(0, 10) + 'T00:00:00');
+  if (isNaN(fechaVenc.getTime())) return { texto: fechaStr, color: '#999' };
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const diffDias = Math.round((fechaVenc - hoy) / 86400000);
+  const fechaFormateada = fechaVenc.toLocaleDateString('es-CL');
+
+  if (diffDias < 0) return { texto: `${fechaFormateada} ⚠️ Vencido`, color: '#e74c3c' };
+  if (diffDias <= 30) return { texto: `${fechaFormateada} ⏳`, color: '#d68910' };
+  return { texto: fechaFormateada, color: '#2e7d32' };
 }
 
 function renderizarTablaInventario() {
@@ -642,7 +718,7 @@ function renderizarTablaInventario() {
   if (!tbody) return;
 
   if (listaInventarioGlobal.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#777;">No hay productos en el inventario.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#777;">No hay productos en el inventario.</td></tr>';
     return;
   }
 
@@ -659,6 +735,7 @@ function renderizarTablaInventario() {
     const stock = (p.stock !== undefined && p.stock !== null) ? p.stock : 0;
 
     const netoEst = Number(p.valor_neto) || Math.round(precioBruto / 1.19);
+    const vencInfo = calcularEstadoVencimiento(p.fecha_vencimiento);
 
     tr.innerHTML = `
       <td><code>${codigo}</code></td>
@@ -671,6 +748,7 @@ function renderizarTablaInventario() {
         <small style="color:#666; font-size:0.75rem;">(Neto: $${netoEst.toLocaleString('es-CL')} + IVA)</small>
       </td>
       <td><strong style="color: ${stock <= 3 ? '#e74c3c' : '#2e7d32'}">${stock} u.</strong></td>
+      <td><strong style="color: ${vencInfo.color};">${vencInfo.texto}</strong></td>
     `;
     tbody.appendChild(tr);
   });
@@ -686,7 +764,9 @@ async function guardarProducto(e) {
     costo: document.getElementById('inv-costo').value,
     margen_pct: document.getElementById('inv-margen').value,
     stock: document.getElementById('inv-stock').value,
-    stock_critico: 2
+    stock_critico: 2,
+    fecha_vencimiento: document.getElementById('inv-vencimiento').value,
+    redondeo: obtenerModoRedondeoSeleccionado()
   };
 
   try {
@@ -719,13 +799,36 @@ function configurarEventosPOS() {
   }
 
   const btnScan = document.getElementById('btn-escanear-camara');
-  if (btnScan) btnScan.addEventListener('click', abrirEscanerCamara);
+  if (btnScan) btnScan.addEventListener('click', () => abrirEscanerCamara('pos'));
 
   const btnCerrarEscaner = document.getElementById('btn-cerrar-escaner');
   if (btnCerrarEscaner) btnCerrarEscaner.addEventListener('click', cerrarEscanerCamara);
 
   const btnCerrarDetalle = document.getElementById('btn-cerrar-detalle');
   if (btnCerrarDetalle) btnCerrarDetalle.addEventListener('click', cerrarDetalleProducto);
+
+  // --- Escáner y lector de código de barras dentro de Inventario ---
+  const inputCodigoInv = document.getElementById('inv-codigo');
+  if (inputCodigoInv) {
+    // Evita que un lector de código de barras (que "escribe" y presiona Enter)
+    // envíe el formulario antes de completar los demás campos.
+    inputCodigoInv.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const inputNombre = document.getElementById('inv-nombre');
+        if (inputNombre) inputNombre.focus();
+      }
+    });
+  }
+
+  const btnScanInventario = document.getElementById('btn-escanear-camara-inventario');
+  if (btnScanInventario) btnScanInventario.addEventListener('click', () => abrirEscanerCamara('inventario'));
+
+  // --- Carga masiva de inventario desde Excel/CSV ---
+  const inputExcel = document.getElementById('inv-archivo-masivo');
+  if (inputExcel) {
+    inputExcel.addEventListener('change', () => procesarArchivoExcelInventario(inputExcel));
+  }
 }
 
 function renderizarPOS() {
@@ -877,8 +980,14 @@ function cerrarDetalleProducto() {
 
 // -----------------------------------------------------------------
 // ESCÁNER POR CÁMARA (usa la librería html5-qrcode cargada en index.html)
+// Sirve tanto para el POS (buscar y agregar al carrito) como para
+// Inventario (rellenar el campo de código al dar de alta un producto).
 // -----------------------------------------------------------------
-function abrirEscanerCamara() {
+let escanerDestinoActual = 'pos';
+
+function abrirEscanerCamara(destino = 'pos') {
+  escanerDestinoActual = destino;
+
   const modal = document.getElementById('modal-escaner');
   if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
 
@@ -894,13 +1003,38 @@ function abrirEscanerCamara() {
     { fps: 10, qrbox: 220 },
     (textoDecodificado) => {
       cerrarEscanerCamara();
-      buscarPorCodigoExacto(textoDecodificado.trim());
+      if (escanerDestinoActual === 'inventario') {
+        rellenarCodigoInventario(textoDecodificado.trim());
+      } else {
+        buscarPorCodigoExacto(textoDecodificado.trim());
+      }
     },
     () => { /* frame sin código detectado: se ignora */ }
   ).catch((err) => {
     alert('No se pudo acceder a la cámara: ' + err);
     cerrarEscanerCamara();
   });
+}
+
+function rellenarCodigoInventario(codigo) {
+  const inputCodigo = document.getElementById('inv-codigo');
+  if (inputCodigo) inputCodigo.value = codigo;
+
+  // Si el SKU ya existe en el inventario, se avisa y se precargan sus datos
+  // para facilitar "reingresar stock" del mismo producto escaneado.
+  const productoExistente = listaInventarioGlobal.find(p => (p.sku || p.codigo || '').toString().trim() === codigo);
+  if (productoExistente) {
+    document.getElementById('inv-nombre').value = productoExistente.nombre || '';
+    document.getElementById('inv-categoria').value = productoExistente.categoria || 'Alimentos';
+    document.getElementById('inv-costo').value = productoExistente.costo || '';
+    document.getElementById('inv-margen').value = productoExistente.margen_pct || 30;
+    const inputVencimiento = document.getElementById('inv-vencimiento');
+    if (inputVencimiento) inputVencimiento.value = (productoExistente.fecha_vencimiento || '').toString().substring(0, 10);
+    calcularPrecioVentaSugerido();
+  }
+
+  const inputStock = document.getElementById('inv-stock');
+  if (inputStock) inputStock.focus();
 }
 
 function cerrarEscanerCamara() {
@@ -912,6 +1046,111 @@ function cerrarEscanerCamara() {
     html5QrCodeInstance = null;
   }
   if (modal) { modal.style.display = 'none'; modal.classList.add('hidden'); }
+}
+
+// -----------------------------------------------------------------
+// CARGA MASIVA DE INVENTARIO DESDE EXCEL/CSV (usa la librería SheetJS/XLSX
+// cargada en index.html). Todo el parseo ocurre en el navegador; solo se
+// envía al backend el arreglo final de productos ya normalizado.
+// -----------------------------------------------------------------
+async function procesarArchivoExcelInventario(inputFile) {
+  const archivo = inputFile.files[0];
+  if (!archivo) return;
+
+  const estadoDiv = document.getElementById('inv-carga-masiva-estado');
+  const marcarEstado = (texto) => { if (estadoDiv) estadoDiv.innerText = texto; };
+
+  if (typeof XLSX === 'undefined') {
+    alert('No se pudo cargar el lector de Excel. Verifica tu conexión a internet.');
+    return;
+  }
+
+  marcarEstado('📄 Leyendo archivo...');
+
+  try {
+    const bufferArchivo = await archivo.arrayBuffer();
+    const libro = XLSX.read(bufferArchivo, { type: 'array', cellDates: true });
+    const primeraHoja = libro.Sheets[libro.SheetNames[0]];
+    const filas = XLSX.utils.sheet_to_json(primeraHoja, { defval: '' });
+
+    if (filas.length === 0) {
+      alert('El archivo no tiene filas de datos.');
+      marcarEstado('');
+      return;
+    }
+
+    const productos = filas
+      .map(normalizarFilaExcelProducto)
+      .filter(p => p.codigo && p.nombre);
+
+    if (productos.length === 0) {
+      alert('No se encontraron filas válidas. Verifica que las columnas se llamen algo como: Codigo, Nombre, Categoria, Costo, Margen_Pct y Stock.');
+      marcarEstado('');
+      return;
+    }
+
+    marcarEstado(`⬆️ Subiendo ${productos.length} producto(s)...`);
+
+    const json = await enviarFormularioBackend('guardarProductosMasivo', {
+      productos,
+      redondeo: obtenerModoRedondeoSeleccionado()
+    });
+
+    let mensajeFinal = '📦 ' + json.message;
+    if (json.errores && json.errores.length > 0) {
+      mensajeFinal += '\n\nDetalle de filas con problemas:\n' + json.errores.join('\n');
+    }
+    alert(mensajeFinal);
+
+    marcarEstado('');
+    inputFile.value = '';
+    await cargarDatosBackend();
+  } catch (err) {
+    alert('Error al procesar el archivo: ' + err.message);
+    marcarEstado('');
+  }
+}
+
+// Acepta encabezados flexibles (con/sin tildes, mayúsculas, sinónimos comunes)
+function normalizarFilaExcelProducto(fila) {
+  const obtenerValor = (posiblesNombres) => {
+    for (const claveOriginal of Object.keys(fila)) {
+      const claveNormalizada = claveOriginal.toString().trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // quita tildes
+      if (posiblesNombres.includes(claveNormalizada)) return fila[claveOriginal];
+    }
+    return '';
+  };
+
+  return {
+    codigo: obtenerValor(['codigo', 'sku']).toString().trim(),
+    nombre: obtenerValor(['nombre', 'producto', 'descripcion']).toString().trim(),
+    categoria: obtenerValor(['categoria']).toString().trim() || 'General',
+    costo: obtenerValor(['costo', 'costo neto', 'costo_neto']),
+    margen_pct: obtenerValor(['margen_pct', 'margen', 'margen (%)', 'margen %']),
+    stock: obtenerValor(['stock', 'cantidad']),
+    stock_critico: obtenerValor(['stock_critico', 'stock critico', 'stock minimo']) || 2,
+    fecha_vencimiento: formatearFechaExcel(obtenerValor(['fecha_vencimiento', 'vencimiento', 'fecha vencimiento', 'fecha de vencimiento']))
+  };
+}
+
+// Normaliza una fecha proveniente de Excel a "yyyy-MM-dd". SheetJS puede
+// entregarla como objeto Date (si se leyó con cellDates:true), como número
+// de serie de Excel (si la celda no tenía formato de fecha), o como texto.
+function formatearFechaExcel(valor) {
+  if (!valor && valor !== 0) return '';
+
+  if (valor instanceof Date) {
+    return valor.toISOString().split('T')[0];
+  }
+
+  if (typeof valor === 'number') {
+    const fechaBase = new Date(Date.UTC(1899, 11, 30));
+    const fecha = new Date(fechaBase.getTime() + valor * 86400000);
+    return fecha.toISOString().split('T')[0];
+  }
+
+  return valor.toString().trim();
 }
 
 // -----------------------------------------------------------------
