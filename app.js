@@ -1,4 +1,7 @@
-// Variable Global base de datos local / Sincronizable con Google Sheets
+// URL de tu Google Apps Script desplegado como Web App
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAAyuqBHUON3C17OW4SLbeRxoutLyYneHcFGfQ_Q4OqwoGBCRESrcF/exec";
+
+// Variable Global base de datos local / Sincronizable
 let inventarioDB = [
   { codigo: "123456", nombre: "comida", categoria: "Alimentos", costo: 0, margen: 0, precioVenta: 13000, stock: 10 },
   { codigo: "1234567", nombre: "burritos", categoria: "Alimentos", costo: 15000, margen: 30, precioVenta: 19500, stock: 10 }
@@ -95,14 +98,14 @@ function guardarProductoInventario() {
 }
 
 /* ===================================================
-   LÓGICA DEL POS / CAJA (NUEVAS MEJORAS)
+   LÓGICA DEL POS / CAJA (BUSCADOR, LECTOR Y CARRITO)
    =================================================== */
 
 function configurarBuscadorPOS() {
   const searchInput = document.getElementById('posSearchInput');
   const dropdown = document.getElementById('searchResultsDropdown');
 
-  // 1. Escritura para Autocompletar (Live Search)
+  // Escritura para Autocompletar (Live Search)
   searchInput.addEventListener('input', (e) => {
     const query = e.target.value.trim().toLowerCase();
     if (query.length < 1) {
@@ -117,7 +120,7 @@ function configurarBuscadorPOS() {
     mostrarDropdownResultados(coincidencias);
   });
 
-  // 2. Soporte para Lector de Código de Barras USB / Tecla Enter
+  // Soporte para Lector de Código de Barras USB / Tecla Enter
   searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -267,28 +270,83 @@ function actualizarTotalesCarrito(neto, iva, bruto) {
   document.getElementById('cartTotalBruto').textContent = bruto.toLocaleString('es-CL');
 }
 
-function finalizarVenta() {
+/* ===================================================
+   PROCESAR Y GUARDAR VENTA EN GOOGLE SHEETS
+   =================================================== */
+async function finalizarVenta() {
   if (carrito.length === 0) {
     alert("El carrito está vacío. Selecciona productos antes de procesar.");
     return;
   }
 
-  const metodo = document.getElementById('posMetodoPago').value;
-  alert(`✅ Venta procesada exitosamente con ${metodo}.`);
+  const metodoPago = document.getElementById('posMetodoPago').value;
   
-  // Descontar Stock Local
-  carrito.forEach(itemCart => {
-    const p = inventarioDB.find(prod => prod.codigo === itemCart.codigo);
-    if(p) p.stock -= itemCart.cantidad;
-  });
+  // Detalle para la columna Items_Detalle
+  const itemsDetalle = carrito.map(item => `${item.nombre} x${item.cantidad} ($${(item.precioBrutoUnitario * item.cantidad).toLocaleString('es-CL')})`).join(" | ");
+  
+  // Total acumulado
+  const totalBruto = carrito.reduce((acc, item) => acc + (item.precioBrutoUnitario * item.cantidad), 0);
 
-  carrito = [];
-  renderizarCarrito();
-  renderizarTablaInventario();
+  // ID Venta y Fecha
+  const idVenta = "V-" + Date.now();
+  const fechaActual = new Date().toLocaleString("es-CL");
+
+  // Estructura alineada con tu tabla
+  const payloadVenta = {
+    action: "registrarVenta",
+    ID_Venta: idVenta,
+    RUT_Tutor: "S/N",
+    Tipo_Documento: "Boleta",
+    Nro_Documento: idVenta,
+    Items_Detalle: itemsDetalle,
+    Total: totalBruto,
+    Medio_Pago: metodoPago,
+    Usuario_Caja: "Administrador",
+    Fecha: fechaActual
+  };
+
+  const btnFinalizar = document.getElementById("btnFinalizarVenta");
+
+  try {
+    if (btnFinalizar) {
+      btnFinalizar.disabled = true;
+      btnFinalizar.textContent = "Guardando en Google Sheets...";
+    }
+
+    // Petición POST a Google Apps Script
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payloadVenta)
+    });
+
+    // Descontar Stock local
+    carrito.forEach(itemCart => {
+      const p = inventarioDB.find(prod => prod.codigo === itemCart.codigo);
+      if(p) p.stock -= itemCart.cantidad;
+    });
+
+    alert(`✅ Venta ${idVenta} registrada con éxito en Google Sheets.`);
+
+    // Limpiar pantalla
+    carrito = [];
+    renderizarCarrito();
+    renderizarTablaInventario();
+
+  } catch (error) {
+    console.error("Error al registrar venta en Google Sheets:", error);
+    alert("❌ Hubo un problema al intentar guardar en Google Sheets.");
+  } finally {
+    if (btnFinalizar) {
+      btnFinalizar.disabled = false;
+      btnFinalizar.textContent = "Finalizar Venta";
+    }
+  }
 }
 
 /* ===================================================
-   MÓDULO DE ESCÁNER VÍA CÁMARA MÓVIL / WEB
+   ESCÁNER VÍA CÁMARA
    =================================================== */
 function abrirCamaraEscaner() {
   document.getElementById('cameraModal').style.display = 'flex';
@@ -300,21 +358,18 @@ function abrirCamaraEscaner() {
   const config = { fps: 10, qrbox: { width: 250, height: 150 } };
 
   html5QrCodeScanner.start(
-    { facingMode: "environment" }, // Usa la cámara trasera del teléfono
+    { facingMode: "environment" },
     config,
     (decodedText) => {
-      // Al detectar un código con éxito
       const producto = inventarioDB.find(p => p.codigo === decodedText.trim());
       if (producto) {
         agregarAlCarrito(producto);
         cerrarCamaraEscaner();
       } else {
-        alert(`Código ${decodedText} no encontrado en el inventario.`);
+        alert(`Código ${decodedText} no encontrado en inventario.`);
       }
     },
-    (errorMessage) => {
-      // Ignorar errores menores de lectura frame por frame
-    }
+    (errorMessage) => {}
   ).catch(err => {
     console.error("Error al abrir la cámara:", err);
     alert("No se pudo acceder a la cámara del dispositivo.");
