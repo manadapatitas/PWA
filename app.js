@@ -802,7 +802,7 @@ function abrirDetalleProducto(codigo) {
   renderizarDetalleProducto();
 
   const modal = document.getElementById('modal-detalle-producto');
-  if (modal) modal.style.display = 'flex';
+  if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
 }
 
 function renderizarDetalleProducto() {
@@ -871,7 +871,7 @@ function confirmarAgregarDetalle() {
 
 function cerrarDetalleProducto() {
   const modal = document.getElementById('modal-detalle-producto');
-  if (modal) modal.style.display = 'none';
+  if (modal) { modal.style.display = 'none'; modal.classList.add('hidden'); }
   productoSeleccionadoPOS = null;
 }
 
@@ -880,7 +880,7 @@ function cerrarDetalleProducto() {
 // -----------------------------------------------------------------
 function abrirEscanerCamara() {
   const modal = document.getElementById('modal-escaner');
-  if (modal) modal.style.display = 'flex';
+  if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
 
   if (typeof Html5Qrcode === 'undefined') {
     alert('No se pudo cargar el lector de cámara. Verifica tu conexión a internet.');
@@ -911,7 +911,7 @@ function cerrarEscanerCamara() {
       .catch(() => {});
     html5QrCodeInstance = null;
   }
-  if (modal) modal.style.display = 'none';
+  if (modal) { modal.style.display = 'none'; modal.classList.add('hidden'); }
 }
 
 // -----------------------------------------------------------------
