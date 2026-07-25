@@ -1433,7 +1433,12 @@ function formatearFechaCorta(fechaStr) {
 
 function renderizarGraficoMasVendidos(masVendidos) {
   const canvas = document.getElementById('chart-mas-vendidos');
-  if (!canvas || typeof Chart === 'undefined') return;
+  if (!canvas) return;
+
+  if (typeof Chart === 'undefined') {
+    mostrarErrorGrafico(canvas);
+    return;
+  }
 
   if (chartMasVendidos) chartMasVendidos.destroy();
 
@@ -1458,7 +1463,12 @@ function renderizarGraficoMasVendidos(masVendidos) {
 
 function renderizarGraficoMetodoPago(ventasPorMetodoPago) {
   const canvas = document.getElementById('chart-metodo-pago');
-  if (!canvas || typeof Chart === 'undefined') return;
+  if (!canvas) return;
+
+  if (typeof Chart === 'undefined') {
+    mostrarErrorGrafico(canvas);
+    return;
+  }
 
   if (chartMetodoPago) chartMetodoPago.destroy();
 
@@ -1477,4 +1487,17 @@ function renderizarGraficoMetodoPago(ventasPorMetodoPago) {
       plugins: { legend: { position: 'bottom' } }
     }
   });
+}
+
+// Si la librería de gráficos no cargó (ej. sin conexión a internet en ese momento),
+// se muestra un aviso visible en vez de dejar el espacio en blanco sin explicación.
+function mostrarErrorGrafico(canvas) {
+  const contenedor = canvas.parentElement;
+  if (!contenedor || contenedor.querySelector('.aviso-grafico-no-cargado')) return;
+  const aviso = document.createElement('p');
+  aviso.className = 'aviso-grafico-no-cargado';
+  aviso.style.cssText = 'color:#c0392b; text-align:center; padding:20px;';
+  aviso.innerText = '⚠️ No se pudo cargar el gráfico (revisa tu conexión a internet y recarga la página).';
+  canvas.style.display = 'none';
+  contenedor.appendChild(aviso);
 }
