@@ -2,16 +2,21 @@
 // FRONTEND APP.JS - MANADA PATITAS PWA
 // =================================================================
 
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAAyuqBHUON3C17OW4SLbeRxoutLyYneHcFGfQ_Q4OqwoGBCRESrcF/exec"; 
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycby5LdWif3Eum4dAAyuqBHUON3C17OW4SLbeRxoutLyYneHcFGfQ_Q4OqwoGBCRESrcF/exec";
 
+// Los PIN YA NO viven aquí. El PIN se valida en el backend contra la
+// hoja "Usuarios" de Google Sheets. Aquí solo dejamos, por rol, a qué
+// pestaña se debe entrar por defecto tras iniciar sesión.
 const CONFIG_ROLES = {
-  admin: { nombre: "Administrador / Dirección", pin: "1234", pestanaDefault: "agenda" },
-  veterinaria: { nombre: "Médico Veterinario", pin: "2026", pestanaDefault: "agenda" },
-  peluqueria: { nombre: "Estética y Peluquería", pin: "1000", pestanaDefault: "peluqueria" },
-  caja: { nombre: "Ventas y Recepción", pin: "2173", pestanaDefault: "agenda" }
+  admin:       { pestanaDefault: "agenda" },
+  veterinaria: { pestanaDefault: "agenda" },
+  peluqueria:  { pestanaDefault: "peluqueria" },
+  caja:        { pestanaDefault: "agenda" }
 };
 
 let usuarioActual = null;
+let sessionToken = null;
+
 let listaPacientesGlobal = [];
 let listaCitasGlobal = [];
 let listaClinicaGlobal = [];
@@ -19,10 +24,18 @@ let listaPeluqueriaGlobal = [];
 let listaInventarioGlobal = [];
 let carritoPOS = [];
 
+// Estado temporal del modal de detalle de producto (POS)
+let productoSeleccionadoPOS = null;
+let cantidadSeleccionadaPOS = 1;
+
+// Instancia activa del lector de cámara (html5-qrcode)
+let html5QrCodeInstance = null;
+
 document.addEventListener('DOMContentLoaded', () => {
   inicializarAutenticacion();
   configurarFechaPorDefecto();
   configurarEventosDesgloseIVA();
+  configurarEventosPOS();
   mostrarModalLogin();
 });
 
@@ -40,34 +53,59 @@ function inicializarAutenticacion() {
   }
 }
 
-function procesarLogin() {
+async function procesarLogin() {
   const inputPin = document.getElementById('login-pin');
   const selectRol = document.getElementById('login-rol');
+  const btnSubmit = document.querySelector('#form-login button[type="submit"]');
 
   const pinIngresado = inputPin ? inputPin.value.trim() : "";
   const rolClave = selectRol ? selectRol.value : "admin";
-  const rolInfo = CONFIG_ROLES[rolClave] || { pin: "1234", nombre: "Usuario", pestanaDefault: "agenda" };
 
-  if (pinIngresado === rolInfo.pin) {
-    usuarioActual = { rol: rolClave, nombre: rolInfo.nombre };
-    
-    const badgeRol = document.getElementById('usuario-badge');
-    if (badgeRol) badgeRol.innerText = usuarioActual.nombre;
+  if (!pinIngresado) return;
 
-    document.body.className = `autenticado rol-${rolClave}`;
-    
-    cerrarModalLogin();
-    if (inputPin) inputPin.value = '';
-    
-    cargarDatosBackend().then(() => {
-      cambiarPestana(rolInfo.pestanaDefault);
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerText = "Verificando..."; }
+
+  try {
+    const res = await fetch(URL_WEB_APP, {
+      method: 'POST',
+      body: JSON.stringify({ accion: "login", rol: rolClave, pin: pinIngresado })
     });
-  } else {
-    alert("⚠️ PIN incorrecto.");
-    if (inputPin) {
-      inputPin.value = '';
-      inputPin.focus();
+    const texto = await res.text();
+    let json;
+    try {
+      json = JSON.parse(texto);
+    } catch (e) {
+      alert("El servidor no respondió correctamente. Verifica el despliegue del script.");
+      return;
     }
+
+    if (json.status === "success") {
+      sessionToken = json.token;
+      usuarioActual = { rol: json.rol, nombre: json.nombre };
+
+      const badgeRol = document.getElementById('usuario-badge');
+      if (badgeRol) badgeRol.innerText = usuarioActual.nombre;
+
+      document.body.className = `autenticado rol-${json.rol}`;
+
+      cerrarModalLogin();
+      if (inputPin) inputPin.value = '';
+
+      const pestanaDefault = (CONFIG_ROLES[json.rol] && CONFIG_ROLES[json.rol].pestanaDefault) || 'agenda';
+      await cargarDatosBackend();
+      cambiarPestana(pestanaDefault);
+    } else {
+      alert("⚠️ " + (json.message || "PIN incorrecto."));
+      if (inputPin) {
+        inputPin.value = '';
+        inputPin.focus();
+      }
+    }
+  } catch (err) {
+    alert("No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.");
+    console.error(err);
+  } finally {
+    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerText = "Ingresar al Sistema"; }
   }
 }
 
@@ -84,16 +122,29 @@ function mostrarModalLogin() {
 
 function cerrarSesion() {
   usuarioActual = null;
+  sessionToken = null;
   const badgeRol = document.getElementById('usuario-badge');
   if (badgeRol) badgeRol.innerText = "Invitado";
   mostrarModalLogin();
 }
 
-function cambiarPinAcceso() {
-  const nuevoPin = prompt("Ingresa tu nuevo PIN:");
-  if (nuevoPin && usuarioActual) {
-    CONFIG_ROLES[usuarioActual.rol].pin = nuevoPin.trim();
-    alert("✅ PIN actualizado.");
+async function cambiarPinAcceso() {
+  if (!usuarioActual || !sessionToken) return;
+
+  const pinActual = prompt("Ingresa tu PIN actual:");
+  if (!pinActual) return;
+
+  const pinNuevo = prompt("Ingresa tu nuevo PIN (mínimo 4 dígitos):");
+  if (!pinNuevo) return;
+
+  try {
+    const json = await enviarFormularioBackend('cambiarPin', {
+      pin_actual: pinActual.trim(),
+      pin_nuevo: pinNuevo.trim()
+    });
+    alert('✅ ' + json.message);
+  } catch (err) {
+    alert('Error: ' + err.message);
   }
 }
 
@@ -149,7 +200,7 @@ async function cargarDatosBackend() {
   try {
     const res = await fetch(URL_WEB_APP, {
       method: 'POST',
-      body: JSON.stringify({ accion: "obtenerTodo" })
+      body: JSON.stringify({ accion: "obtenerTodo", token: sessionToken })
     });
     const textoRespuesta = await res.text();
     let data;
@@ -157,6 +208,17 @@ async function cargarDatosBackend() {
       data = JSON.parse(textoRespuesta);
     } catch (e) {
       console.error("Respuesta no válida:", textoRespuesta);
+      alert("El servidor no respondió correctamente. Revisa el despliegue del script de Google.");
+      return;
+    }
+
+    if (data.status === "error") {
+      if (data.codigo === "SESION_EXPIRADA") {
+        alert("⚠️ Tu sesión expiró. Vuelve a iniciar sesión.");
+        cerrarSesion();
+      } else {
+        console.error("Error del backend:", data.message);
+      }
       return;
     }
 
@@ -172,17 +234,31 @@ async function cargarDatosBackend() {
     renderizarPOS();
   } catch (err) {
     console.error("Error cargando datos:", err);
+    alert("No se pudo cargar la información. Revisa tu conexión a internet.");
   }
 }
 
 async function enviarFormularioBackend(action, payload) {
-  const bodyData = { accion: action, ...payload };
+  const bodyData = { accion: action, token: sessionToken, ...payload };
   const res = await fetch(URL_WEB_APP, {
     method: 'POST',
     body: JSON.stringify(bodyData)
   });
-  const json = await res.json();
-  if (json.status === "error") throw new Error(json.message);
+  const texto = await res.text();
+  let json;
+  try {
+    json = JSON.parse(texto);
+  } catch (e) {
+    throw new Error("El servidor no respondió correctamente. Revisa el despliegue del script.");
+  }
+
+  if (json.status === "error") {
+    if (json.codigo === "SESION_EXPIRADA") {
+      alert("⚠️ Tu sesión expiró. Vuelve a iniciar sesión.");
+      cerrarSesion();
+    }
+    throw new Error(json.message);
+  }
   return json;
 }
 
@@ -397,8 +473,8 @@ function cargarDatosMascotaSeleccionada() {
     return;
   }
 
-  const registro = listaPacientesGlobal.find(p => 
-    formatearRutChile(p.rut) === rutSeleccionado && 
+  const registro = listaPacientesGlobal.find(p =>
+    formatearRutChile(p.rut) === rutSeleccionado &&
     (p.mascota || '').toString().trim().toLowerCase() === mascotaNombre.trim().toLowerCase()
   );
 
@@ -524,15 +600,15 @@ async function guardarPeluqueria(e) {
 
 // -----------------------------------------------------------------
 // INVENTARIO - CÁLCULO DE VALOR NETO, IVA (19%) Y PRECIO BRUTO
+// El campo "Precio Venta Final" es de SOLO LECTURA: siempre se
+// calcula desde Costo + Margen, nunca se digita a mano.
 // -----------------------------------------------------------------
 function configurarEventosDesgloseIVA() {
   const inputCosto = document.getElementById('inv-costo');
   const inputMargen = document.getElementById('inv-margen');
-  const inputPrecio = document.getElementById('inv-precio');
 
   if (inputCosto) inputCosto.addEventListener('input', calcularPrecioVentaSugerido);
   if (inputMargen) inputMargen.addEventListener('input', calcularPrecioVentaSugerido);
-  if (inputPrecio) inputPrecio.addEventListener('input', calcularDesdePrecioFinal);
 }
 
 function calcularPrecioVentaSugerido() {
@@ -545,33 +621,19 @@ function calcularPrecioVentaSugerido() {
     const valorVentaNeto = Math.round(costoNeto * (1 + (margenPct / 100)));
     // 2. IVA Chile 19%
     const iva = Math.round(valorVentaNeto * 0.19);
-    // 3. Bruto Total
+    // 3. Bruto Total (siempre calculado, el campo es de solo lectura)
     const precioFinalBruto = valorVentaNeto + iva;
 
-    if (document.activeElement.id !== 'inv-precio' && precioInput) {
-      precioInput.value = precioFinalBruto;
-    }
+    if (precioInput) precioInput.value = precioFinalBruto;
 
     document.getElementById('lbl-inv-neto').innerText = `$${valorVentaNeto.toLocaleString('es-CL')}`;
     document.getElementById('lbl-inv-iva').innerText = `$${iva.toLocaleString('es-CL')}`;
     document.getElementById('lbl-inv-total').innerText = `$${precioFinalBruto.toLocaleString('es-CL')}`;
   } else {
+    if (precioInput) precioInput.value = '';
     document.getElementById('lbl-inv-neto').innerText = `$0`;
     document.getElementById('lbl-inv-iva').innerText = `$0`;
     document.getElementById('lbl-inv-total').innerText = `$0`;
-  }
-}
-
-function calcularDesdePrecioFinal() {
-  const precioBruto = parseFloat(document.getElementById('inv-precio').value) || 0;
-  
-  if (precioBruto > 0) {
-    const valorNeto = Math.round(precioBruto / 1.19);
-    const iva = precioBruto - valorNeto;
-
-    document.getElementById('lbl-inv-neto').innerText = `$${valorNeto.toLocaleString('es-CL')}`;
-    document.getElementById('lbl-inv-iva').innerText = `$${iva.toLocaleString('es-CL')}`;
-    document.getElementById('lbl-inv-total').innerText = `$${precioBruto.toLocaleString('es-CL')}`;
   }
 }
 
@@ -587,7 +649,7 @@ function renderizarTablaInventario() {
   tbody.innerHTML = '';
   listaInventarioGlobal.forEach(p => {
     const tr = document.createElement('tr');
-    
+
     const codigo = p.sku || p.codigo || '-';
     const nombre = p.nombre || '-';
     const categoria = p.categoria || 'General';
@@ -596,7 +658,7 @@ function renderizarTablaInventario() {
     const precioBruto = Number(p.precio_venta || p.precio || 0);
     const stock = (p.stock !== undefined && p.stock !== null) ? p.stock : 0;
 
-    const netoEst = Math.round(precioBruto / 1.19);
+    const netoEst = Number(p.valor_neto) || Math.round(precioBruto / 1.19);
 
     tr.innerHTML = `
       <td><code>${codigo}</code></td>
@@ -623,7 +685,6 @@ async function guardarProducto(e) {
     categoria: document.getElementById('inv-categoria').value,
     costo: document.getElementById('inv-costo').value,
     margen_pct: document.getElementById('inv-margen').value,
-    precio: document.getElementById('inv-precio').value,
     stock: document.getElementById('inv-stock').value,
     stock_critico: 2
   };
@@ -643,6 +704,30 @@ async function guardarProducto(e) {
 // -----------------------------------------------------------------
 // POS / CAJA
 // -----------------------------------------------------------------
+function configurarEventosPOS() {
+  const inputBuscar = document.getElementById('pos-buscar');
+  if (inputBuscar) {
+    // Los lectores de código de barras USB/Bluetooth escriben el código y
+    // envían un "Enter" automáticamente: lo aprovechamos para buscar
+    // coincidencia exacta y mostrar la ficha del producto.
+    inputBuscar.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        buscarPorCodigoExacto(inputBuscar.value.trim());
+      }
+    });
+  }
+
+  const btnScan = document.getElementById('btn-escanear-camara');
+  if (btnScan) btnScan.addEventListener('click', abrirEscanerCamara);
+
+  const btnCerrarEscaner = document.getElementById('btn-cerrar-escaner');
+  if (btnCerrarEscaner) btnCerrarEscaner.addEventListener('click', cerrarEscanerCamara);
+
+  const btnCerrarDetalle = document.getElementById('btn-cerrar-detalle');
+  if (btnCerrarDetalle) btnCerrarDetalle.addEventListener('click', cerrarDetalleProducto);
+}
+
 function renderizarPOS() {
   filtrarProductosPOS();
   renderizarCarritoPOS();
@@ -656,11 +741,13 @@ function filtrarProductosPOS() {
   const termino = buscarInput ? buscarInput.value.toLowerCase().trim() : "";
   contenedor.innerHTML = '';
 
-  const productosFiltrados = listaInventarioGlobal.filter(p => {
-    const nom = (p.nombre || '').toLowerCase();
-    const cod = (p.sku || p.codigo || '').toLowerCase();
-    return nom.includes(termino) || cod.includes(termino);
-  });
+  const productosFiltrados = termino === ""
+    ? listaInventarioGlobal
+    : listaInventarioGlobal.filter(p => {
+        const nom = (p.nombre || '').toLowerCase();
+        const cod = (p.sku || p.codigo || '').toString().toLowerCase();
+        return nom.includes(termino) || cod.includes(termino);
+      });
 
   if (productosFiltrados.length === 0) {
     contenedor.innerHTML = '<p style="color:#777; grid-column: 1/-1;">No se encontraron productos.</p>';
@@ -678,26 +765,174 @@ function filtrarProductosPOS() {
     card.innerHTML = `
       <div class="pos-item-title">${nombre}</div>
       <div class="pos-item-price">$${precio.toLocaleString('es-CL')}</div>
-      <div class="pos-item-stock">Stock: ${stock} u.</div>
+      <div class="pos-item-stock">SKU: ${codigo || '-'} · Stock: ${stock} u.</div>
     `;
 
-    card.onclick = () => agregarAlCarrito(codigo, nombre, precio, stock);
+    // Al hacer clic se abre la ficha del producto (no se agrega directo),
+    // para poder ver SKU, neto, IVA, precio y elegir cantidad.
+    card.onclick = () => abrirDetalleProducto(codigo);
     contenedor.appendChild(card);
   });
 }
 
-function agregarAlCarrito(codigo, nombre, precio, stockMax) {
+// Búsqueda por coincidencia EXACTA de SKU: la usan tanto el lector de
+// código de barras (Enter) como el escáner por cámara.
+function buscarPorCodigoExacto(codigo) {
+  if (!codigo) return;
+  const producto = listaInventarioGlobal.find(p => (p.sku || p.codigo || '').toString().trim() === codigo.trim());
+  if (producto) {
+    abrirDetalleProducto(producto.sku || producto.codigo);
+    const inputBuscar = document.getElementById('pos-buscar');
+    if (inputBuscar) inputBuscar.value = '';
+    filtrarProductosPOS();
+  } else {
+    alert('⚠️ No se encontró ningún producto con el código: ' + codigo);
+  }
+}
+
+// -----------------------------------------------------------------
+// FICHA DE PRODUCTO (SKU, descripción, neto, IVA, precio, cantidad)
+// -----------------------------------------------------------------
+function abrirDetalleProducto(codigo) {
+  const producto = listaInventarioGlobal.find(p => (p.sku || p.codigo || '').toString() === codigo.toString());
+  if (!producto) return;
+
+  productoSeleccionadoPOS = producto;
+  cantidadSeleccionadaPOS = 1;
+  renderizarDetalleProducto();
+
+  const modal = document.getElementById('modal-detalle-producto');
+  if (modal) modal.style.display = 'flex';
+}
+
+function renderizarDetalleProducto() {
+  const p = productoSeleccionadoPOS;
+  if (!p) return;
+
+  const precioBruto = Number(p.precio_venta || p.precio || 0);
+  const valorNeto = Number(p.valor_neto) || Math.round(precioBruto / 1.19);
+  const iva = Number(p.iva) || (precioBruto - valorNeto);
+  const stock = Number(p.stock || 0);
+
+  setTexto('det-sku', p.sku || p.codigo || '-');
+  setTexto('det-nombre', p.nombre || '-');
+  setTexto('det-categoria', p.categoria || 'General');
+  setTexto('det-neto', `$${valorNeto.toLocaleString('es-CL')}`);
+  setTexto('det-iva', `$${iva.toLocaleString('es-CL')}`);
+  setTexto('det-precio', `$${precioBruto.toLocaleString('es-CL')}`);
+  setTexto('det-stock', `${stock} u. disponibles`);
+
+  const inputCantidad = document.getElementById('det-cantidad');
+  if (inputCantidad) {
+    inputCantidad.value = cantidadSeleccionadaPOS;
+    inputCantidad.max = stock || 1;
+  }
+
+  const btnConfirmar = document.getElementById('btn-agregar-detalle');
+  if (btnConfirmar) btnConfirmar.disabled = stock <= 0;
+}
+
+function setTexto(id, valor) {
+  const el = document.getElementById(id);
+  if (el) el.innerText = valor;
+}
+
+function cambiarCantidadDetalle(delta) {
+  if (!productoSeleccionadoPOS) return;
+  const stock = Number(productoSeleccionadoPOS.stock || 0);
+  cantidadSeleccionadaPOS = Math.min(Math.max(1, cantidadSeleccionadaPOS + delta), stock || 1);
+  const inputCantidad = document.getElementById('det-cantidad');
+  if (inputCantidad) inputCantidad.value = cantidadSeleccionadaPOS;
+}
+
+function actualizarCantidadDetalleManual(valor) {
+  if (!productoSeleccionadoPOS) return;
+  const stock = Number(productoSeleccionadoPOS.stock || 0);
+  let n = parseInt(valor, 10) || 1;
+  if (n < 1) n = 1;
+  if (stock > 0 && n > stock) n = stock;
+  cantidadSeleccionadaPOS = n;
+  const inputCantidad = document.getElementById('det-cantidad');
+  if (inputCantidad) inputCantidad.value = n;
+}
+
+function confirmarAgregarDetalle() {
+  const p = productoSeleccionadoPOS;
+  if (!p) return;
+
+  const codigo = p.sku || p.codigo;
+  const nombre = p.nombre;
+  const precio = Number(p.precio_venta || p.precio || 0);
+  const stock = Number(p.stock || 0);
+
+  agregarAlCarrito(codigo, nombre, precio, stock, cantidadSeleccionadaPOS);
+  cerrarDetalleProducto();
+}
+
+function cerrarDetalleProducto() {
+  const modal = document.getElementById('modal-detalle-producto');
+  if (modal) modal.style.display = 'none';
+  productoSeleccionadoPOS = null;
+}
+
+// -----------------------------------------------------------------
+// ESCÁNER POR CÁMARA (usa la librería html5-qrcode cargada en index.html)
+// -----------------------------------------------------------------
+function abrirEscanerCamara() {
+  const modal = document.getElementById('modal-escaner');
+  if (modal) modal.style.display = 'flex';
+
+  if (typeof Html5Qrcode === 'undefined') {
+    alert('No se pudo cargar el lector de cámara. Verifica tu conexión a internet.');
+    cerrarEscanerCamara();
+    return;
+  }
+
+  html5QrCodeInstance = new Html5Qrcode("lector-camara");
+  html5QrCodeInstance.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 220 },
+    (textoDecodificado) => {
+      cerrarEscanerCamara();
+      buscarPorCodigoExacto(textoDecodificado.trim());
+    },
+    () => { /* frame sin código detectado: se ignora */ }
+  ).catch((err) => {
+    alert('No se pudo acceder a la cámara: ' + err);
+    cerrarEscanerCamara();
+  });
+}
+
+function cerrarEscanerCamara() {
+  const modal = document.getElementById('modal-escaner');
+  if (html5QrCodeInstance) {
+    html5QrCodeInstance.stop()
+      .then(() => html5QrCodeInstance.clear())
+      .catch(() => {});
+    html5QrCodeInstance = null;
+  }
+  if (modal) modal.style.display = 'none';
+}
+
+// -----------------------------------------------------------------
+// CARRITO
+// -----------------------------------------------------------------
+function agregarAlCarrito(codigo, nombre, precio, stockMax, cantidad = 1) {
   const existe = carritoPOS.find(item => item.codigo === codigo);
+  cantidad = Math.max(1, parseInt(cantidad, 10) || 1);
 
   if (existe) {
-    if (existe.cantidad < stockMax) {
-      existe.cantidad++;
+    const nuevaCantidad = existe.cantidad + cantidad;
+    if (nuevaCantidad <= stockMax) {
+      existe.cantidad = nuevaCantidad;
     } else {
+      existe.cantidad = stockMax;
       alert("⚠️ Límite de stock alcanzado.");
     }
   } else {
     if (stockMax > 0) {
-      carritoPOS.push({ codigo, nombre, precio, cantidad: 1, stockMax });
+      const cantidadFinal = Math.min(cantidad, stockMax);
+      carritoPOS.push({ codigo, nombre, precio, cantidad: cantidadFinal, stockMax });
     } else {
       alert("⚠️ Producto sin stock disponible.");
     }
