@@ -160,7 +160,7 @@ input, select {
   font-size: 0.9rem;
 }
 
-/* Botones y Controles */
+/* Botones */
 .qty-controls {
   display: flex;
   align-items: center;
@@ -194,6 +194,15 @@ input, select {
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.btn-danger {
+  background: #d32f2f;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .btn-delete { background: none; border: none; cursor: pointer; }
@@ -251,3 +260,6 @@ input, select {
   border-radius: 10px;
   text-align: center;
 }
+
+.margin-top { margin-top: 15px; }
+.help-text { font-size: 0.85rem; color: #666; margin-top: 10px; }
