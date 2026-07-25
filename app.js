@@ -431,8 +431,8 @@ async function guardarTutor(e) {
   };
 
   try {
-    await enviarFormularioBackend('guardarTutor', payload);
-    alert('🐾 Tutor registrado.');
+    const json = await enviarFormularioBackend('guardarTutor', payload);
+    alert('🐾 ' + json.message);
     document.getElementById('form-tutor').reset();
     await cargarDatosBackend();
   } catch (err) {
