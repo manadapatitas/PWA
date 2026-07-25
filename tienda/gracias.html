@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gracias — Manada Patitas</title>
+<link rel="stylesheet" href="estilos-tienda.css">
+</head>
+<body>
+
+  <nav class="nav-principal">
+    <div class="nav-interior">
+      <a href="index.html" class="marca"><span class="huella">🐾</span> Manada Patitas</a>
+      <div class="nav-links" id="nav-links">
+        <a href="index.html">Inicio</a>
+        <a href="tienda.html">Tienda</a>
+        <a href="agenda.html">Agendar Hora</a>
+        <a href="nosotros.html">Nosotros</a>
+        <a href="blog.html">Consejos</a>
+      </div>
+      <div class="nav-cta">
+        <button id="btn-abrir-carrito" class="btn btn-secundario">🛒 <span id="badge-carrito" class="badge-cantidad oculto">0</span></button>
+        <button class="nav-toggle" id="nav-toggle">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <section class="seccion" style="max-width:640px; margin:0 auto;">
+    <div class="contenedor">
+      <div class="tarjeta centrado" style="padding:56px 32px;" id="tarjeta-resultado">
+        <div style="font-size:3.4rem;" id="icono-resultado">⏳</div>
+        <h2 class="mt-24" id="titulo-resultado">Verificando tu pago...</h2>
+        <p class="lead" style="margin:12px auto 24px;" id="mensaje-resultado">Un momento por favor.</p>
+        <div id="acciones-resultado" class="hero-acciones" style="justify-content:center;"></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <div class="overlay-carrito" id="overlay-carrito"></div>
+  <div class="panel-carrito" id="panel-carrito">
+    <div class="carrito-cabecera">
+      <h3>Tu carrito</h3>
+      <button id="btn-cerrar-carrito" class="btn btn-fantasma" style="padding:8px 14px;">✕</button>
+    </div>
+    <div class="carrito-items" id="carrito-items-lista"></div>
+    <div class="carrito-footer">
+      <div class="carrito-total-row"><span>Total</span><span id="carrito-total" class="dato-mono">$0</span></div>
+      <a href="tienda.html#checkout" class="btn btn-primario btn-block" id="btn-ir-a-pagar">Ir a pagar</a>
+    </div>
+  </div>
+
+  <script src="tienda.js"></script>
+  <script src="componentes.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const estado = params.get('estado');
+      const pedido = params.get('pedido');
+
+      const icono = document.getElementById('icono-resultado');
+      const titulo = document.getElementById('titulo-resultado');
+      const mensaje = document.getElementById('mensaje-resultado');
+      const acciones = document.getElementById('acciones-resultado');
+
+      if (estado === 'exito') {
+        icono.innerText = '🎉';
+        titulo.innerText = '¡Gracias por tu compra!';
+        mensaje.innerText = pedido
+          ? `Tu pedido #${pedido} fue confirmado y pagado con éxito. Te contactaremos para coordinar la entrega.`
+          : 'Tu pago fue confirmado con éxito. Te contactaremos para coordinar la entrega.';
+        acciones.innerHTML = `
+          <a href="tienda.html" class="btn btn-secundario">Seguir comprando</a>
+          <a href="index.html" class="btn btn-primario">Volver al inicio</a>
+        `;
+      } else if (estado === 'rechazado') {
+        icono.innerText = '😕';
+        titulo.innerText = 'El pago no se pudo completar';
+        mensaje.innerText = 'Tu tarjeta fue rechazada o cancelaste el pago. No se realizó ningún cargo. Puedes intentarlo nuevamente.';
+        acciones.innerHTML = `
+          <a href="tienda.html#checkout" class="btn btn-primario">Intentar de nuevo</a>
+          <a href="index.html" class="btn btn-fantasma">Volver al inicio</a>
+        `;
+      } else {
+        icono.innerText = '⚠️';
+        titulo.innerText = 'No pudimos confirmar el estado de tu pago';
+        mensaje.innerText = 'Si alcanzaste a ingresar los datos de tu tarjeta, contáctanos para verificar si el cargo se realizó antes de intentar de nuevo.';
+        acciones.innerHTML = `
+          <a href="nosotros.html" class="btn btn-secundario">Ver datos de contacto</a>
+          <a href="index.html" class="btn btn-fantasma">Volver al inicio</a>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>
