@@ -4,377 +4,360 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manada Patitas - Gestión Vet & Petshop</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
-  <!-- Librería externa para lectura de código de barras/QR -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
 
-  <!-- ENCABEZADO PRINCIPAL -->
-  <header class="main-header">
+  <!-- ENCABEZADO -->
+  <header class="app-header">
     <div class="logo-container">
-      <img src="logo.png" alt="Manada Patitas" class="brand-logo" onerror="this.style.display='none'">
-      <div>
+      <img src="icon-192x192.png" alt="Manada Patitas" class="app-logo">
+      <div class="brand-text">
         <h1>Manada Patitas</h1>
-        <p>Gestión Vet & Petshop</p>
+        <span class="sub-brand">Gestión Vet & Petshop</span>
       </div>
     </div>
-    <div class="user-actions">
-      <span class="user-role" id="userRoleBadge">Administrador / Dirección</span>
-      <button class="btn-secundario" id="btnChangePin">🔑 Cambiar PIN</button>
-      <button class="btn-danger" id="btnLogout">Cerrar Sesión</button>
+    <div class="header-actions">
+      <span id="usuario-badge" class="user-badge">Invitado</span>
+      <button class="btn-secondary" onclick="cambiarPinAcceso()">🔑 Cambiar PIN</button>
+      <button class="btn-danger" onclick="cerrarSesion()">Cerrar Sesión</button>
     </div>
   </header>
 
-  <!-- NAVEGACIÓN POR PESTAÑAS -->
-  <nav class="module-nav">
-    <button class="nav-tab active" data-target="mod-agenda">📅 Agenda & Citas</button>
-    <button class="nav-tab" data-target="mod-tutores">🐾 Tutores y Pacientes</button>
-    <button class="nav-tab" data-target="mod-clinica">🩺 Ficha Clínica</button>
-    <button class="nav-tab" data-target="mod-peluqueria">✂️ Peluquería</button>
-    <button class="nav-tab" data-target="mod-inventario">📦 Inventario</button>
-    <button class="nav-tab" data-target="mod-pos">💳 POS / Caja</button>
-  </nav>
-
-  <!-- CONTENIDO PRINCIPAL DE MÓDULOS -->
-  <main class="content-wrapper">
-
-    <!-- 1. MÓDULO AGENDA & CITAS -->
-    <section id="mod-agenda" class="module-section active">
-      <div class="card">
-        <h2>📅 Agenda de Atenciones y Citas</h2>
-        <p class="help-text">Gestiona los turnos para consultas médicas, vacunas y servicios de peluquería.</p>
-        
-        <form id="formAgenda" class="grid-form">
-          <div class="form-group">
-            <label for="agendaFecha">Fecha y Hora</label>
-            <input type="datetime-local" id="agendaFecha" required>
-          </div>
-          <div class="form-group">
-            <label for="agendaMascota">Nombre Paciente / Mascota</label>
-            <input type="text" id="agendaMascota" placeholder="Ej: Baco" required>
-          </div>
-          <div class="form-group">
-            <label for="agendaTutor">Tutor / Responsable</label>
-            <input type="text" id="agendaTutor" placeholder="Ej: Rodrigo Martínez" required>
-          </div>
-          <div class="form-group">
-            <label for="agendaServicio">Servicio</label>
-            <select id="agendaServicio">
-              <option value="Consulta Médica">Consulta Médica</option>
-              <option value="Vacunación / Desparasitación">Vacunación / Desparasitación</option>
-              <option value="Peluquería & Baño">Peluquería & Baño</option>
-              <option value="Control General">Control General</option>
-            </select>
-          </div>
-          <div class="form-group full-width">
-            <button type="submit" class="btn-primary">Agendar Cita</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card margin-top">
-        <h3>Próximas Citas Agendadas</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Fecha/Hora</th>
-              <th>Mascota</th>
-              <th>Tutor</th>
-              <th>Servicio</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="tablaAgendaBody">
-            <tr><td colspan="5" class="text-center">Cargando citas...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 2. MÓDULO TUTORES Y PACIENTES -->
-    <section id="mod-tutores" class="module-section">
-      <div class="card">
-        <h2>🐾 Registro de Tutores y Pacientes</h2>
-        <form id="formTutores" class="grid-form">
-          <div class="form-group">
-            <label for="tutorRut">RUT Tutor</label>
-            <input type="text" id="tutorRut" placeholder="12.345.678-9" required>
-          </div>
-          <div class="form-group">
-            <label for="tutorNombre">Nombre Completo Tutor</label>
-            <input type="text" id="tutorNombre" placeholder="Ej: Juan Pérez" required>
-          </div>
-          <div class="form-group">
-            <label for="tutorTelefono">Teléfono Contacto</label>
-            <input type="tel" id="tutorTelefono" placeholder="+56 9 1234 5678" required>
-          </div>
-          <div class="form-group">
-            <label for="mascotaNombre">Nombre de la Mascota</label>
-            <input type="text" id="mascotaNombre" placeholder="Ej: Firulais" required>
-          </div>
-          <div class="form-group">
-            <label for="mascotaEspecie">Especie / Raza</label>
-            <input type="text" id="mascotaEspecie" placeholder="Ej: Canino / Golden Retriever" required>
-          </div>
-          <div class="form-group full-width">
-            <button type="submit" class="btn-primary">Registrar Tutor y Paciente</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card margin-top">
-        <h3>Directorio de Pacientes Registrados</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>RUT Tutor</th>
-              <th>Tutor</th>
-              <th>Teléfono</th>
-              <th>Mascota</th>
-              <th>Especie / Raza</th>
-            </tr>
-          </thead>
-          <tbody id="tablaTutoresBody">
-            <tr><td colspan="5" class="text-center">Cargando pacientes...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 3. MÓDULO FICHA CLÍNICA -->
-    <section id="mod-clinica" class="module-section">
-      <div class="card">
-        <h2>🩺 Ficha Clínica Veterinaria</h2>
-        <form id="formClinica" class="grid-form">
-          <div class="form-group">
-            <label for="clinicaMascota">Buscar Paciente / RUT Tutor</label>
-            <input type="text" id="clinicaMascota" placeholder="Nombre paciente o RUT..." required>
-          </div>
-          <div class="form-group">
-            <label for="clinicaAnamnesis">Anamnesis / Motivo Consulta</label>
-            <textarea id="clinicaAnamnesis" rows="3" placeholder="Síntomas, observaciones iniciales..."></textarea>
-          </div>
-          <div class="form-group">
-            <label for="clinicaDiagnostico">Diagnóstico y Tratamiento</label>
-            <textarea id="clinicaDiagnostico" rows="3" placeholder="Receta médica, medicamentos prescriptos..."></textarea>
-          </div>
-          <div class="form-group full-width">
-            <button type="submit" class="btn-primary">Guardar Ficha Clínica</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card margin-top">
-        <h3>Historial Clínico Reciente</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Paciente / RUT</th>
-              <th>Motivo Consulta</th>
-              <th>Diagnóstico / Tratamiento</th>
-            </tr>
-          </thead>
-          <tbody id="tablaClinicaBody">
-            <tr><td colspan="4" class="text-center">Cargando fichas clínicas...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 4. MÓDULO PELUQUERÍA -->
-    <section id="mod-peluqueria" class="module-section">
-      <div class="card">
-        <h2>✂️ Registro de Peluquería y Estética</h2>
-        <form id="formPeluqueria" class="grid-form">
-          <div class="form-group">
-            <label for="peluMascota">Mascota / Paciente</label>
-            <input type="text" id="peluMascota" placeholder="Ej: Baco" required>
-          </div>
-          <div class="form-group">
-            <label for="peluServicio">Tipo de Servicio</label>
-            <select id="peluServicio">
-              <option value="Baño Higiénico">Baño Higiénico</option>
-              <option value="Corte de Raza">Corte de Raza</option>
-              <option value="Deslanado & Baño">Deslanado & Baño</option>
-              <option value="Corte de Uñas / Limpieza">Corte de Uñas / Limpieza</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="peluObs">Observaciones Estéticas / Manto</label>
-            <input type="text" id="peluObs" placeholder="Ej: Nudos en orejas, piel sensible...">
-          </div>
-          <div class="form-group full-width">
-            <button type="submit" class="btn-primary">Registrar Servicio Peluquería</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card margin-top">
-        <h3>Historial de Peluquería</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Mascota</th>
-              <th>Servicio Realizado</th>
-              <th>Observaciones</th>
-            </tr>
-          </thead>
-          <tbody id="tablaPeluqueriaBody">
-            <tr><td colspan="4" class="text-center">Cargando registros de peluquería...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 5. MÓDULO INVENTARIO -->
-    <section id="mod-inventario" class="module-section">
-      <div class="card">
-        <h2>📦 Gestión de Inventario de Productos</h2>
-        <form id="formInventario" class="grid-form">
-          <div class="form-group">
-            <label for="invSku">Código / SKU</label>
-            <div class="input-with-action">
-              <input type="text" id="invSku" placeholder="Ej: 780123456789" required>
-              <button type="button" id="btnScanSku" class="btn-secundario">📷 Scan</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="invNombre">Nombre del Producto</label>
-            <input type="text" id="invNombre" placeholder="Ej: Alimento Perro 15Kg" required>
-          </div>
-          <div class="form-group">
-            <label for="invCategoria">Categoría</label>
-            <input type="text" id="invCategoria" placeholder="Ej: Alimentos, Farmacia...">
-          </div>
-          <div class="form-group">
-            <label for="invCosto">Costo Neto ($)</label>
-            <input type="number" id="invCosto" min="0" placeholder="0" required>
-          </div>
-          <div class="form-group">
-            <label for="invMargen">Margen deseado (%)</label>
-            <input type="number" id="invMargen" min="0" value="30" required>
-          </div>
-          <div class="form-group">
-            <label for="invStock">Stock Inicial</label>
-            <input type="number" id="invStock" min="0" value="1" required>
-          </div>
-        </form>
-
-        <!-- BANNER DE CÁLCULO DE VALORES DE VENTA -->
-        <div class="info-banner" id="bannerPrecioCalculado">
-          <div><strong>Neto Sugerido:</strong> <span id="valNeto">$0</span></div>
-          <div><strong>IVA (19%):</strong> <span id="valIva">$0</span></div>
-          <div><strong>PRECIO VENTA BRUTO:</strong> <span id="valBruto" class="highlight-price">$0</span></div>
+  <!-- MODAL LOGIN -->
+  <div id="modal-login" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Iniciar Sesión</h2>
+      <p>Selecciona tu rol e ingresa tu PIN de acceso</p>
+      
+      <form id="form-login">
+        <div class="form-group">
+          <label for="login-rol">Perfil / Rol:</label>
+          <select id="login-rol">
+            <option value="admin">🛡️ Administrador / Dirección</option>
+            <option value="veterinaria">🩺 Médico Veterinario</option>
+            <option value="peluqueria">✂️ Peluquería / Estética</option>
+            <option value="caja">🛒 Recepción / Petshop (Caja)</option>
+          </select>
         </div>
 
-        <button type="button" id="btnGuardarProducto" class="btn-primary btn-block">Guardar Producto en Inventario</button>
-      </div>
-
-      <div class="card margin-top">
-        <h3>Catálogo de Productos</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>SKU</th>
-              <th>Producto</th>
-              <th>Categoría</th>
-              <th>Costo</th>
-              <th>P. Venta Bruto</th>
-              <th>Stock</th>
-            </tr>
-          </thead>
-          <tbody id="tablaInventarioBody">
-            <tr><td colspan="6" class="text-center">Cargando inventario...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 6. MÓDULO POS / CAJA -->
-    <section id="mod-pos" class="module-section">
-      <div class="pos-container">
-        <!-- Columna Izquierda: Búsqueda -->
-        <div class="card">
-          <h2>💳 Punto de Venta (POS)</h2>
-          <div class="pos-search-wrapper">
-            <label>Buscar Producto (Nombre o SKU):</label>
-            <div class="search-input-group">
-              <input type="text" id="posSearchInput" placeholder="Escriba o escanee producto...">
-              <button type="button" id="btnPosScan" class="btn-secundario">📷 Scan</button>
-            </div>
-            <div id="posDropdownResults" class="dropdown-results" style="display:none;"></div>
-          </div>
+        <div class="form-group">
+          <label for="login-pin">PIN de Acceso:</label>
+          <input type="password" id="login-pin" placeholder="Ingresa tu PIN" required>
         </div>
 
-        <!-- Columna Derecha: Carrito y Cobro -->
-        <div class="card">
-          <h2>🛒 Carrito de Compras</h2>
-          
-          <div class="grid-form margin-bottom-sm">
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Ingresar al Sistema</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- NAVEGACIÓN PRINCIPAL -->
+  <main class="main-content">
+    <nav class="nav-tabs">
+      <button id="nav-btn-agenda" class="tab-btn active" onclick="cambiarPestana('agenda')">📅 Agenda & Citas</button>
+      <button id="nav-btn-tutores" class="tab-btn" onclick="cambiarPestana('tutores')">🐾 Tutores y Pacientes</button>
+      <button id="nav-btn-clinica" class="tab-btn" onclick="cambiarPestana('clinica')">🩺 Ficha Clínica</button>
+      <button id="nav-btn-peluqueria" class="tab-btn" onclick="cambiarPestana('peluqueria')">✂️ Peluquería</button>
+      <button id="nav-btn-inventario" class="tab-btn" onclick="cambiarPestana('inventario')">📦 Inventario</button>
+      <button id="nav-btn-caja" class="tab-btn" onclick="cambiarPestana('caja')">💳 POS / Caja</button>
+    </nav>
+
+    <!-- AGENDA -->
+    <section id="sec-agenda" class="tab-content active">
+      <div class="card">
+        <h3>📅 Agendar Nueva Cita</h3>
+        <form id="form-agenda" onsubmit="guardarCita(event)">
+          <div class="form-grid">
             <div class="form-group">
-              <label for="posRutTutor">RUT Tutor (Opcional)</label>
-              <input type="text" id="posRutTutor" placeholder="12.345.678-9">
+              <label>Seleccionar Tutor</label>
+              <select id="age-select-tutor" onchange="actualizarMascotasAgenda()" required>
+                <option value="">-- Selecciona un Tutor --</option>
+              </select>
             </div>
             <div class="form-group">
-              <label for="posTipoDoc">Tipo Documento</label>
-              <select id="posTipoDoc">
-                <option value="Boleta">Boleta Electronica</option>
-                <option value="Factura">Factura</option>
-                <option value="Ticket">Ticket Interno</option>
+              <label>Seleccionar Mascota</label>
+              <select id="age-select-mascota" required disabled>
+                <option value="">-- Selecciona primero un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fecha y Hora Seleccionada</label>
+              <input type="text" id="agenda-fecha" readonly placeholder="Haz clic en un bloque abajo ⬇️" required style="background-color: #f8f9fa; cursor: not-allowed; font-weight: bold; color: #008080;">
+            </div>
+            <div class="form-group">
+              <label>Tipo de Servicio</label>
+              <select id="agenda-servicio">
+                <option value="Consulta Médica">Consulta Médica</option>
+                <option value="Vacunación / Desparasitación">Vacunación / Desparasitación</option>
+                <option value="Peluquería / Baño">Peluquería / Baño</option>
+                <option value="Control">Control Post-atención</option>
               </select>
             </div>
           </div>
+          <button type="submit" class="btn-primary">Reservar Cita</button>
+        </form>
+      </div>
 
-          <table class="cart-table">
+      <div class="card" style="margin-top: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+          <h3 style="margin: 0;">Agenda Diaria</h3>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="filtro-fecha-agenda" style="font-weight: bold;">Ver Fecha:</label>
+            <input type="date" id="filtro-fecha-agenda" onchange="renderizarParrillaAgenda()" style="padding: 6px; border-radius: 6px; border: 1px solid #ccc;">
+          </div>
+        </div>
+        <div id="grid-horarios" class="horarios-grid"></div>
+      </div>
+    </section>
+
+    <!-- TUTORES -->
+    <section id="sec-tutores" class="tab-content hidden">
+      <div class="card">
+        <h3>🐾 Registrar Mascota y Tutor</h3>
+        <form id="form-tutor" onsubmit="guardarTutor(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>RUT Tutor (Sin Puntos)</label>
+              <input type="text" id="tut-rut" placeholder="Ej: 12345678-K" onblur="formatearInputRut(this)" required>
+            </div>
+            <div class="form-group">
+              <label>Nombre Tutor</label>
+              <input type="text" id="tut-nombre" placeholder="Ej: María González" required>
+            </div>
+            <div class="form-group">
+              <label>Teléfono Contacto</label>
+              <input type="tel" id="tut-telefono" placeholder="Ej: +56 9 1234 5678" required>
+            </div>
+            <div class="form-group">
+              <label>Nombre Mascota</label>
+              <input type="text" id="tut-mascota" placeholder="Ej: Bennie" required>
+            </div>
+            <div class="form-group">
+              <label>Especie / Raza</label>
+              <input type="text" id="tut-raza" placeholder="Ej: Canino / Poodle" required>
+            </div>
+            <div class="form-group">
+              <label>Edad</label>
+              <input type="text" id="tut-edad" placeholder="Ej: 3 años">
+            </div>
+            <div class="form-group">
+              <label>Peso (kg)</label>
+              <input type="number" step="0.1" id="tut-peso" placeholder="Ej: 8.5">
+            </div>
+          </div>
+          <button type="submit" class="btn-primary">Registrar Ficha</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- CLINICA -->
+    <section id="sec-clinica" class="tab-content hidden">
+      <div class="card">
+        <h3>🩺 Ficha Médica Veterinaria</h3>
+        <form id="form-clinica" onsubmit="guardarAtencionClinica(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Seleccionar Tutor</label>
+              <select id="cli-select-tutor" onchange="actualizarMascotasClinica()" required>
+                <option value="">-- Selecciona un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Seleccionar Mascota</label>
+              <select id="cli-select-mascota" onchange="cargarDatosMascotaSeleccionada()" required disabled>
+                <option value="">-- Selecciona primero un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Temperatura (°C)</label>
+              <input type="number" step="0.1" id="cli-temp" placeholder="Ej: 38.5">
+            </div>
+            <div class="form-group">
+              <label>Peso Actual (kg)</label>
+              <input type="number" step="0.1" id="cli-peso" placeholder="Ej: 8.5">
+            </div>
+          </div>
+
+          <div id="cli-info-paciente" class="info-banner hidden">
+            <span>🐾 <strong>Mascota:</strong> <span id="lbl-cli-mascota">-</span></span> | 
+            <span>🧬 <strong>Raza:</strong> <span id="lbl-cli-raza">-</span></span> | 
+            <span>🎂 <strong>Edad:</strong> <span id="lbl-cli-edad">-</span></span>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px; margin-top: 15px;">
+            <label>Anamnesis y Diagnóstico</label>
+            <textarea id="cli-diagnostico" rows="3" placeholder="Motivo de consulta y diagnóstico..." required></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Tratamiento / Receta Médica</label>
+            <textarea id="cli-receta" rows="3" placeholder="Fármacos y dosificación..."></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Guardar Ficha Médica</button>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h3>📜 Historial de Consultas Médicas</h3>
+        <div id="contenedor-historial-clinico" style="margin-top: 10px;"></div>
+      </div>
+    </section>
+
+    <!-- PELUQUERIA -->
+    <section id="sec-peluqueria" class="tab-content hidden">
+      <div class="card">
+        <h3>✂️ Registro de Peluquería y Estética</h3>
+        <form id="form-peluqueria" onsubmit="guardarPeluqueria(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Seleccionar Tutor</label>
+              <select id="pel-select-tutor" onchange="actualizarMascotasPeluqueria()" required>
+                <option value="">-- Selecciona un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Seleccionar Mascota</label>
+              <select id="pel-select-mascota" required disabled>
+                <option value="">-- Selecciona primero un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Servicio Realizado</label>
+              <select id="pel-servicio">
+                <option value="Baño y Secado">Baño y Secado</option>
+                <option value="Corte Higiénico">Corte Higiénico</option>
+                <option value="Corte de Raza + Baño">Corte de Raza + Baño</option>
+                <option value="Deslanado / Cepillado">Deslanado / Cepillado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Valor Servicio ($)</label>
+              <input type="number" id="pel-monto" placeholder="Ej: 18000" required>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label>Observaciones</label>
+            <textarea id="pel-obs" rows="2" placeholder="Observaciones..."></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Registrar Servicio Peluquería</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- INVENTARIO CON CÁLCULO DE NETO Y IVA EN TIEMPO REAL -->
+    <section id="sec-inventario" class="tab-content hidden">
+      <div class="card">
+        <h3>📦 Nuevo Producto / Actualizar Stock</h3>
+        <form id="form-inventario" onsubmit="guardarProducto(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Código de Barras / SKU</label>
+              <input type="text" id="inv-codigo" placeholder="Ej: 780123456789" required>
+            </div>
+            <div class="form-group">
+              <label>Nombre del Producto</label>
+              <input type="text" id="inv-nombre" placeholder="Ej: Alimento Perro Adulto 3kg" required>
+            </div>
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="inv-categoria">
+                <option value="Alimentos">Alimentos</option>
+                <option value="Farmacia">Farmacia / Medicamentos</option>
+                <option value="Accesorios">Accesorios y Juguetes</option>
+                <option value="Estética">Snacks y Premios</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Costo Neto/Compra ($)</label>
+              <input type="number" id="inv-costo" placeholder="Ej: 10000" required>
+            </div>
+            <div class="form-group">
+              <label>Margen de Ganancia (%)</label>
+              <input type="number" id="inv-margen" placeholder="Ej: 30" value="30" required>
+            </div>
+            <div class="form-group">
+              <label>Precio Venta Final (Bruto $)</label>
+              <input type="number" id="inv-precio" placeholder="Ej: 15470" required>
+            </div>
+            <div class="form-group">
+              <label>Stock Disponible</label>
+              <input type="number" id="inv-stock" placeholder="Ej: 10" required>
+            </div>
+          </div>
+
+          <!-- BANNER DESGLOSE IVA Y NETO -->
+          <div id="inv-desglose-box" style="margin-top: 15px; padding: 12px; background-color: #e0f2f1; border-radius: 8px; border-left: 5px solid #008080; display: flex; gap: 20px; flex-wrap: wrap;">
+            <div>💵 <strong>Valor Venta Neto:</strong> <span id="lbl-inv-neto">$0</span></div>
+            <div>🧾 <strong>IVA (19%):</strong> <span id="lbl-inv-iva">$0</span></div>
+            <div>🏷️ <strong>Precio Final Bruto:</strong> <strong id="lbl-inv-total" style="color:#008080;">$0</strong></div>
+          </div>
+
+          <button type="submit" class="btn-primary" style="margin-top: 15px;">Agregar / Actualizar Inventario</button>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h3>📋 Lista de Productos en Stock</h3>
+        <div class="table-responsive" style="margin-top: 10px;">
+          <table class="data-table">
             <thead>
               <tr>
+                <th>Código</th>
                 <th>Producto</th>
-                <th>Cant.</th>
-                <th>Precio</th>
-                <th>Subtotal</th>
-                <th></th>
+                <th>Categoría</th>
+                <th>Costo</th>
+                <th>Margen (%)</th>
+                <th>Precio Venta</th>
+                <th>Stock</th>
               </tr>
             </thead>
-            <tbody id="posCartBody">
-              <tr id="emptyCartRow"><td colspan="5" class="empty-cart">El carrito está vacío</td></tr>
+            <tbody id="tabla-inventario-body">
+              <tr><td colspan="7" style="text-align:center;">Cargando inventario...</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </section>
 
+    <!-- POS / CAJA -->
+    <section id="sec-caja" class="tab-content hidden">
+      <div class="pos-container">
+        <div class="card pos-catalog">
+          <h3>🛒 Punto de Venta</h3>
+          <div class="form-group" style="margin-bottom: 15px;">
+            <input type="text" id="pos-buscar" placeholder="🔍 Buscar por nombre o código..." oninput="filtrarProductosPOS()">
+          </div>
+          <div id="pos-grid-productos" class="pos-grid"></div>
+        </div>
+
+        <div class="card pos-cart">
+          <h3>🧾 Detalle de Venta</h3>
+          <div id="pos-items-carrito" class="cart-items">
+            <p style="color: #777; text-align: center; margin-top: 20px;">El carrito está vacío</p>
+          </div>
+          
           <div class="cart-summary">
-            <div class="summary-row total-row">
-              <span>TOTAL A PAGAR:</span>
-              <span id="posTotalAmount" class="total-amount">$0</span>
+            <div class="summary-row">
+              <span>Total:</span>
+              <strong id="pos-total-monto" style="font-size: 1.4rem; color: #008080;">$0</strong>
             </div>
-
-            <div class="form-group margin-top">
-              <label for="posMetodoPago">Medio de Pago</label>
-              <select id="posMetodoPago">
-                <option value="Efectivo">Efectivo</option>
-                <option value="Débito / Redelcom">Débito / Redelcom</option>
-                <option value="Crédito">Crédito</option>
-                <option value="Transferencia">Transferencia Bancaria</option>
+            
+            <div class="form-group" style="margin-top: 10px;">
+              <label>Método de Pago:</label>
+              <select id="pos-metodo-pago">
+                <option value="Efectivo">💵 Efectivo</option>
+                <option value="Débito / Crédito">💳 Débito / Crédito (Transbank)</option>
+                <option value="Transferencia">📲 Transferencia Bancaria</option>
               </select>
             </div>
 
-            <button type="button" id="btnProcesarVenta" class="btn-primary btn-block margin-top">PROCESAR Y REGISTRAR VENTA</button>
+            <button class="btn-primary" style="width: 100%; margin-top: 15px; padding: 12px;" onclick="procesarVentaPOS()">Finalizar Venta</button>
           </div>
         </div>
       </div>
     </section>
 
   </main>
-
-  <!-- MODAL CAMARA QR / ESCÁNER -->
-  <div id="qrModal" class="modal-overlay" style="display:none;">
-    <div class="modal-content">
-      <h3>Escanear Código de Barras / QR</h3>
-      <div id="qrReader" style="width: 100%;"></div>
-      <button type="button" id="btnCloseQr" class="btn-danger margin-top">Cerrar Escáner</button>
-    </div>
-  </div>
 
   <script src="app.js"></script>
 </body>
