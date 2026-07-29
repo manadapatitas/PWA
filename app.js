@@ -1704,6 +1704,19 @@ function actualizarVueltoPOS() {
   }
 }
 
+function cancelarVentaPOS() {
+  if (carritoPOS.length === 0) return;
+
+  const confirmado = confirm('¿Cancelar esta venta? Se vaciará todo el carrito actual (no afecta el stock, ya que aún no se registró ninguna venta).');
+  if (!confirmado) return;
+
+  carritoPOS = [];
+  renderizarCarritoPOS();
+  const inputEntregado = document.getElementById('pos-monto-entregado');
+  if (inputEntregado) inputEntregado.value = '';
+  actualizarVueltoPOS();
+}
+
 async function procesarVentaPOS() {
   if (carritoPOS.length === 0) {
     alert("El carrito está vacío.");
