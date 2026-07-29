@@ -1545,6 +1545,10 @@ async function confirmarAperturaCaja() {
     alert('Ingresa un monto de apertura válido.');
     return;
   }
+
+  const btn = document.getElementById('btn-confirmar-apertura');
+  if (btn) { btn.disabled = true; btn.innerText = 'Abriendo...'; }
+
   try {
     const json = await enviarFormularioBackend('abrirCaja', { monto_apertura: monto });
     alert('✅ ' + json.message);
@@ -1552,6 +1556,8 @@ async function confirmarAperturaCaja() {
     await cargarEstadoCaja();
   } catch (err) {
     alert('Error al abrir caja: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = 'Abrir Caja'; }
   }
 }
 
@@ -1601,6 +1607,10 @@ async function confirmarCierreCaja() {
     alert('Ingresa el monto contado físicamente en caja.');
     return;
   }
+
+  const btn = document.getElementById('btn-confirmar-cierre');
+  if (btn) { btn.disabled = true; btn.innerText = 'Cerrando...'; }
+
   try {
     const json = await enviarFormularioBackend('cerrarCaja', { monto_contado: contado });
     alert(`✅ Caja cerrada.\nEsperado: ${formatearMoneda(json.monto_esperado)}\nContado: ${formatearMoneda(json.monto_contado)}\nDiferencia: ${formatearMoneda(json.diferencia)}`);
@@ -1608,6 +1618,8 @@ async function confirmarCierreCaja() {
     await cargarEstadoCaja();
   } catch (err) {
     alert('Error al cerrar caja: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = 'Cerrar Caja'; }
   }
 }
 
