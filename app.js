@@ -968,25 +968,65 @@ async function guardarProducto(e) {
 // -----------------------------------------------------------------
 // POS / CAJA
 // -----------------------------------------------------------------
+// -----------------------------------------------------------------
+// MODO VENTA RÁPIDA: funciona con CUALQUIER forma de escanear (lector
+// físico USB/Bluetooth que "escribe" en el campo de búsqueda, o la cámara).
+// Mientras está activado, cada código escaneado se agrega directo al
+// carrito (cantidad 1, o +1 si ya estaba) sin abrir modal de confirmación.
+// -----------------------------------------------------------------
+let modoVentaRapidaActivo = false;
+
+function alternarModoVentaRapida() {
+  modoVentaRapidaActivo = !modoVentaRapidaActivo;
+  const btn = document.getElementById('btn-escaneo-rapido');
+  const inputBuscar = document.getElementById('pos-buscar');
+
+  if (modoVentaRapidaActivo) {
+    if (btn) {
+      btn.innerText = '⏹ Detener venta rápida';
+      btn.style.backgroundColor = '#c62828';
+    }
+    if (inputBuscar) {
+      inputBuscar.placeholder = '⚡ Modo rápido activo: escanea con el lector y se agrega solo...';
+      inputBuscar.focus();
+    }
+  } else {
+    if (btn) {
+      btn.innerText = '⚡ Venta rápida';
+      btn.style.backgroundColor = '#2e7d32';
+    }
+    if (inputBuscar) {
+      inputBuscar.placeholder = '🔍 Escanea o escribe nombre / SKU y presiona Enter...';
+    }
+  }
+}
+
 function configurarEventosPOS() {
   const inputBuscar = document.getElementById('pos-buscar');
   if (inputBuscar) {
     // Los lectores de código de barras USB/Bluetooth escriben el código y
     // envían un "Enter" automáticamente: lo aprovechamos para buscar
-    // coincidencia exacta y mostrar la ficha del producto.
+    // coincidencia exacta y mostrar la ficha del producto (modo normal), o
+    // para agregar directo al carrito si el modo venta rápida está activo.
     inputBuscar.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        buscarPorCodigoExacto(inputBuscar.value.trim());
+        const codigo = inputBuscar.value.trim();
+        if (modoVentaRapidaActivo) {
+          agregarProductoEscaneadoRapido(codigo);
+          inputBuscar.value = '';
+        } else {
+          buscarPorCodigoExacto(codigo);
+        }
       }
     });
   }
 
   const btnScan = document.getElementById('btn-escanear-camara');
-  if (btnScan) btnScan.addEventListener('click', () => abrirEscanerCamara('pos', false));
+  if (btnScan) btnScan.addEventListener('click', () => abrirEscanerCamara('pos', modoVentaRapidaActivo));
 
   const btnScanRapido = document.getElementById('btn-escaneo-rapido');
-  if (btnScanRapido) btnScanRapido.addEventListener('click', () => abrirEscanerCamara('pos', true));
+  if (btnScanRapido) btnScanRapido.addEventListener('click', alternarModoVentaRapida);
 
   const btnCerrarEscaner = document.getElementById('btn-cerrar-escaner');
   if (btnCerrarEscaner) btnCerrarEscaner.addEventListener('click', cerrarEscanerCamara);
@@ -1253,7 +1293,12 @@ function abrirEscanerCamara(destino = 'pos', modoRapido = false) {
 // abrir ningún modal, y muestra feedback breve dentro del propio modal de
 // escáner (nunca alert(), para no interrumpir el escaneo continuo).
 function agregarProductoEscaneadoRapido(codigo) {
-  const feedback = document.getElementById('escaner-feedback');
+  // Si el modal de cámara está abierto, el feedback va ahí; si el escaneo
+  // viene del lector físico (sin cámara abierta), va en la línea junto al
+  // buscador del POS.
+  const modalCamaraAbierto = document.getElementById('modal-escaner') &&
+    document.getElementById('modal-escaner').style.display === 'flex';
+  const feedback = document.getElementById(modalCamaraAbierto ? 'escaner-feedback' : 'pos-scan-feedback');
   const producto = listaInventarioGlobal.find(p => (p.sku || p.codigo || '').toString().trim() === codigo);
 
   if (!producto) {

@@ -361,8 +361,9 @@
           <div class="pos-search-row">
             <input type="text" id="pos-buscar" placeholder="🔍 Escanea o escribe nombre / SKU y presiona Enter..." oninput="filtrarProductosPOS()">
             <button type="button" id="btn-escanear-camara" class="btn-scan" title="Escanear un producto (con confirmación de cantidad)">📷</button>
-            <button type="button" id="btn-escaneo-rapido" class="btn-scan" style="background-color:#2e7d32;" title="Venta rápida: escanea varios productos seguidos, sin confirmar cada uno">⚡ Venta rápida</button>
+            <button type="button" id="btn-escaneo-rapido" class="btn-scan" style="background-color:#2e7d32;" title="Activa/desactiva el modo venta rápida: cada escaneo se agrega solo, sin confirmar">⚡ Venta rápida</button>
           </div>
+          <p id="pos-scan-feedback" style="min-height:22px; margin-bottom:8px; font-weight:600;"></p>
           <div id="pos-grid-productos" class="pos-grid"></div>
         </div>
 
