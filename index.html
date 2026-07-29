@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manada Patitas - Gestión Vet & Petshop</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css?v=20260728">
+</head>
+<body>
+
+  <!-- ENCABEZADO -->
+  <header class="app-header">
+    <div class="logo-container">
+      <img src="./icon-192x192.png" alt="Manada Patitas" class="app-logo" onerror="this.style.display='none'">
+      <div class="brand-text">
+        <h1>Manada Patitas</h1>
+        <span class="sub-brand">Gestión Vet & Petshop</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span id="usuario-badge" class="user-badge">Invitado</span>
+      <button class="btn-secondary" onclick="cambiarPinAcceso()">🔑 Cambiar PIN</button>
+      <button class="btn-danger" onclick="cerrarSesion()">Cerrar Sesión</button>
+    </div>
+  </header>
+
+  <!-- MODAL LOGIN -->
+  <div id="modal-login" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Iniciar Sesión</h2>
+      <p>Ingresa tu RUT y tu PIN de acceso personal</p>
+
+      <form id="form-login">
+        <div class="form-group">
+          <label for="login-rut">RUT</label>
+          <input type="text" id="login-rut" placeholder="Ej: 12345678-K" required autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="login-pin">PIN de Acceso:</label>
+          <input type="password" id="login-pin" placeholder="Ingresa tu PIN" required>
+        </div>
+
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Ingresar al Sistema</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- NAVEGACIÓN PRINCIPAL -->
+  <main class="main-content">
+    <nav class="nav-tabs">
+      <button id="nav-btn-agenda" class="tab-btn active" onclick="cambiarPestana('agenda')">📅 Agenda & Citas</button>
+      <button id="nav-btn-tutores" class="tab-btn" onclick="cambiarPestana('tutores')">🐾 Tutores y Pacientes</button>
+      <button id="nav-btn-clinica" class="tab-btn" onclick="cambiarPestana('clinica')">🩺 Ficha Clínica</button>
+      <button id="nav-btn-peluqueria" class="tab-btn" onclick="cambiarPestana('peluqueria')">✂️ Peluquería</button>
+      <button id="nav-btn-inventario" class="tab-btn" onclick="cambiarPestana('inventario')">📦 Inventario</button>
+      <button id="nav-btn-caja" class="tab-btn" onclick="cambiarPestana('caja')">💳 POS / Caja</button>
+      <button id="nav-btn-dashboard" class="tab-btn" onclick="cambiarPestana('dashboard')">📊 Dashboard</button>
+    </nav>
+
+    <!-- AGENDA -->
+    <section id="sec-agenda" class="tab-content active">
+      <div class="card">
+        <h3>📅 Agendar Nueva Cita</h3>
+        <form id="form-agenda" onsubmit="guardarCita(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Seleccionar Tutor</label>
+              <select id="age-select-tutor" onchange="actualizarMascotasAgenda()" required>
+                <option value="">-- Selecciona un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Seleccionar Mascota</label>
+              <select id="age-select-mascota" required disabled>
+                <option value="">-- Selecciona primero un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fecha y Hora Seleccionada</label>
+              <input type="text" id="agenda-fecha" readonly placeholder="Haz clic en un bloque abajo ⬇️" required class="readonly-field">
+            </div>
+            <div class="form-group">
+              <label>Tipo de Servicio</label>
+              <select id="agenda-servicio">
+                <option value="Consulta Médica">Consulta Médica</option>
+                <option value="Vacunación / Desparasitación">Vacunación / Desparasitación</option>
+                <option value="Peluquería / Baño">Peluquería / Baño</option>
+                <option value="Control">Control Post-atención</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary">Reservar Cita</button>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+          <h3 style="margin: 0;">Agenda Diaria</h3>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="filtro-fecha-agenda" style="font-weight: bold;">Ver Fecha:</label>
+            <input type="date" id="filtro-fecha-agenda" onchange="renderizarParrillaAgenda()" style="padding: 6px; border-radius: 6px; border: 1px solid #ccc;">
+          </div>
+        </div>
+        <div id="grid-horarios" class="horarios-grid"></div>
+      </div>
+    </section>
+
+    <!-- TUTORES -->
+    <section id="sec-tutores" class="tab-content hidden">
+      <div class="card">
+        <h3>🐾 Registrar Mascota y Tutor</h3>
+        <form id="form-tutor" onsubmit="guardarTutor(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>RUT Tutor (Sin Puntos)</label>
+              <input type="text" id="tut-rut" placeholder="Ej: 12345678-K" onblur="formatearInputRut(this)" required>
+            </div>
+            <div class="form-group">
+              <label>Nombre Tutor</label>
+              <input type="text" id="tut-nombre" placeholder="Ej: María González" required>
+            </div>
+            <div class="form-group">
+              <label>Teléfono Contacto</label>
+              <input type="tel" id="tut-telefono" placeholder="Ej: +56 9 1234 5678" required>
+            </div>
+            <div class="form-group">
+              <label>Nombre Mascota</label>
+              <input type="text" id="tut-mascota" placeholder="Ej: Bennie" required>
+            </div>
+            <div class="form-group">
+              <label>Especie / Raza</label>
+              <input type="text" id="tut-raza" placeholder="Ej: Canino / Poodle" required>
+            </div>
+            <div class="form-group">
+              <label>Edad</label>
+              <input type="text" id="tut-edad" placeholder="Ej: 3 años">
+            </div>
+            <div class="form-group">
+              <label>Peso (kg)</label>
+              <input type="number" step="0.1" id="tut-peso" placeholder="Ej: 8.5">
+            </div>
+          </div>
+          <button type="submit" class="btn-primary">Registrar Ficha</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- CLINICA -->
+    <section id="sec-clinica" class="tab-content hidden">
+      <div class="card">
+        <h3>🩺 Ficha Médica Veterinaria</h3>
+        <form id="form-clinica" onsubmit="guardarAtencionClinica(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Seleccionar Tutor</label>
+              <select id="cli-select-tutor" onchange="actualizarMascotasClinica()" required>
+                <option value="">-- Selecciona un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Seleccionar Mascota</label>
+              <select id="cli-select-mascota" onchange="cargarDatosMascotaSeleccionada()" required disabled>
+                <option value="">-- Selecciona primero un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Temperatura (°C)</label>
+              <input type="number" step="0.1" id="cli-temp" placeholder="Ej: 38.5">
+            </div>
+            <div class="form-group">
+              <label>Peso (kg)</label>
+              <input type="number" step="0.1" id="cli-peso" placeholder="Ej: 8.5">
+            </div>
+          </div>
+
+          <div id="cli-info-paciente" class="card hidden" style="background:#e0f2f1; margin-bottom:12px;">
+            <div><strong>🐾 Mascota:</strong> <span id="lbl-cli-mascota">-</span></div>
+            <div><strong>🧬 Raza:</strong> <span id="lbl-cli-raza">-</span></div>
+            <div><strong>🎂 Edad:</strong> <span id="lbl-cli-edad">-</span></div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Anamnesis y Diagnóstico</label>
+            <textarea id="cli-diagnostico" rows="3" placeholder="Motivo de consulta y diagnóstico..." required></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Tratamiento / Receta Médica</label>
+            <textarea id="cli-receta" rows="3" placeholder="Fármacos y dosificación..."></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Guardar Ficha Médica</button>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h3>📜 Historial de Consultas Médicas</h3>
+        <div id="contenedor-historial-clinico" style="margin-top: 10px;"></div>
+      </div>
+    </section>
+
+    <!-- PELUQUERIA -->
+    <section id="sec-peluqueria" class="tab-content hidden">
+      <div class="card">
+        <h3>✂️ Registro de Peluquería y Estética</h3>
+        <form id="form-peluqueria" onsubmit="guardarPeluqueria(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Seleccionar Tutor</label>
+              <select id="pel-select-tutor" onchange="actualizarMascotasPeluqueria()" required>
+                <option value="">-- Selecciona un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Seleccionar Mascota</label>
+              <select id="pel-select-mascota" required disabled>
+                <option value="">-- Selecciona primero un Tutor --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Servicio Realizado</label>
+              <select id="pel-servicio">
+                <option value="Baño y Secado">Baño y Secado</option>
+                <option value="Corte Higiénico">Corte Higiénico</option>
+                <option value="Corte de Raza + Baño">Corte de Raza + Baño</option>
+                <option value="Deslanado / Cepillado">Deslanado / Cepillado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Valor Servicio ($)</label>
+              <input type="number" id="pel-monto" placeholder="Ej: 18000" required>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label>Observaciones</label>
+            <textarea id="pel-obs" rows="2" placeholder="Observaciones..."></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Registrar Servicio Peluquería</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- INVENTARIO CON CÁLCULO DE NETO Y IVA EN TIEMPO REAL -->
+    <section id="sec-inventario" class="tab-content hidden">
+      <div class="card">
+        <h3>📦 Nuevo Producto / Actualizar Stock</h3>
+        <form id="form-inventario" onsubmit="guardarProducto(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Código de Barras / SKU</label>
+              <div class="pos-search-row">
+                <input type="text" id="inv-codigo" placeholder="Escanea o escribe el código" required>
+                <button type="button" id="btn-escanear-camara-inventario" class="btn-scan" title="Escanear con la cámara">📷</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Nombre del Producto</label>
+              <input type="text" id="inv-nombre" placeholder="Ej: Alimento Perro Adulto 3kg" required>
+            </div>
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="inv-categoria">
+                <option value="Alimentos">Alimentos</option>
+                <option value="Farmacia">Farmacia / Medicamentos</option>
+                <option value="Accesorios">Accesorios y Juguetes</option>
+                <option value="Estética">Snacks y Premios</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Costo Neto/Compra ($)</label>
+              <input type="number" id="inv-costo" placeholder="Ej: 10000" required>
+            </div>
+            <div class="form-group">
+              <label>Margen de Ganancia (%)</label>
+              <input type="number" id="inv-margen" placeholder="Ej: 30" value="30" required>
+            </div>
+            <div class="form-group">
+              <label>Precio Venta Final (Bruto $)</label>
+              <input type="number" id="inv-precio" placeholder="Se calcula automáticamente" readonly class="readonly-field" title="Se calcula automáticamente a partir del costo y el margen">
+            </div>
+            <div class="form-group">
+              <label>Redondeo Comercial</label>
+              <select id="inv-redondeo">
+                <option value="cercano90">Terminar en $X90 (ej. $23.490)</option>
+                <option value="redondo990">Terminar en $X.990 (ej. $23.990)</option>
+                <option value="ninguno">Sin redondeo (valor exacto)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Stock a Ingresar</label>
+              <input type="number" id="inv-stock" placeholder="Ej: 10" required>
+            </div>
+            <div class="form-group">
+              <label>Fecha de Vencimiento (opcional)</label>
+              <input type="date" id="inv-vencimiento" title="Relevante sobre todo para Alimentos y Farmacia">
+            </div>
+          </div>
+
+          <!-- BANNER DESGLOSE IVA Y NETO -->
+          <div id="inv-desglose-box" style="margin-top: 15px; padding: 12px; background-color: #e0f2f1; border-radius: 8px; border-left: 5px solid #008080; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+            <div>💵 <strong>Valor Venta Neto:</strong> <span id="lbl-inv-neto">$0</span></div>
+            <div>🧾 <strong>IVA (19%):</strong> <span id="lbl-inv-iva">$0</span></div>
+            <div>🏷️ <strong>Precio Final Bruto:</strong> <strong id="lbl-inv-total" style="color:#008080;">$0</strong></div>
+            <div><small id="lbl-inv-exacto" style="color:#666;"></small></div>
+          </div>
+          <p class="form-hint">Si ingresas un código que ya existe, se sumará el stock nuevo al stock actual y se actualizará el precio. La fecha de vencimiento solo se reemplaza si ingresas una nueva.</p>
+
+          <button type="submit" class="btn-primary" style="margin-top: 15px;">Agregar / Actualizar Inventario</button>
+        </form>
+      </div>
+
+      <!-- CARGA MASIVA DESDE EXCEL -->
+      <div class="card" style="margin-top: 20px;">
+        <h3>📥 Carga Masiva desde Excel</h3>
+        <p class="form-hint" style="margin-bottom: 10px;">
+          Sube un archivo .xlsx, .xls o .csv con las columnas: <strong>Codigo, Nombre, Categoria, Costo, Margen_Pct, Stock, Fecha_Vencimiento</strong> (esta última es opcional).
+          El precio de venta se calcula automáticamente para cada fila (igual que en el formulario de arriba), usando el redondeo comercial seleccionado.
+          Si un código ya existe, se suma el stock y se actualiza el precio; si no existe, se crea el producto.
+        </p>
+        <input type="file" id="inv-archivo-masivo" accept=".xlsx,.xls,.csv">
+        <div id="inv-carga-masiva-estado" style="margin-top: 8px; font-size: 0.85rem; color: #008080; font-weight: 600;"></div>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h3>📋 Lista de Productos en Stock</h3>
+        <div class="table-responsive" style="margin-top: 10px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Costo</th>
+                <th>Margen (%)</th>
+                <th>Precio Venta</th>
+                <th>Stock</th>
+                <th>Vencimiento</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-inventario-body">
+              <tr><td colspan="8" style="text-align:center;">Cargando inventario...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- POS / CAJA -->
+    <section id="sec-caja" class="tab-content hidden">
+      <div id="barra-estado-caja" class="card" style="margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div id="texto-estado-caja">Consultando estado de caja...</div>
+        <div>
+          <button type="button" id="btn-abrir-caja" class="btn-primary hidden" onclick="mostrarModalAperturaCaja()">🔓 Abrir Caja</button>
+          <button type="button" id="btn-cerrar-caja" class="btn-danger hidden" onclick="mostrarModalCierreCaja()">🔒 Cerrar Caja</button>
+        </div>
+      </div>
+
+      <div class="pos-container">
+        <div class="card pos-catalog">
+          <h3>🛒 Punto de Venta</h3>
+          <div class="pos-search-row">
+            <input type="text" id="pos-buscar" placeholder="🔍 Escanea o escribe nombre / SKU y presiona Enter..." oninput="filtrarProductosPOS()">
+            <button type="button" id="btn-escanear-camara" class="btn-scan" title="Escanear un producto (con confirmación de cantidad)">📷</button>
+            <button type="button" id="btn-escaneo-rapido" class="btn-scan" style="background-color:#2e7d32;" title="Venta rápida: escanea varios productos seguidos, sin confirmar cada uno">⚡ Venta rápida</button>
+          </div>
+          <div id="pos-grid-productos" class="pos-grid"></div>
+        </div>
+
+        <div class="card pos-cart">
+          <h3>🧾 Detalle de Venta</h3>
+          <div id="pos-items-carrito" class="cart-items">
+            <p style="color: #777; text-align: center; margin-top: 20px;">El carrito está vacío</p>
+          </div>
+
+          <div class="cart-summary">
+            <div class="summary-row">
+              <span>Total:</span>
+              <strong id="pos-total-monto" style="font-size: 1.4rem; color: #008080;">$0</strong>
+            </div>
+
+            <div class="form-group" style="margin-top: 10px;">
+              <label>Método de Pago:</label>
+              <select id="pos-metodo-pago" onchange="alCambiarMetodoPagoPOS()">
+                <option value="Efectivo">💵 Efectivo</option>
+                <option value="Débito / Crédito">💳 Débito / Crédito (Transbank)</option>
+                <option value="Transferencia">📲 Transferencia Bancaria</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="grupo-efectivo-pos" style="margin-top: 10px;">
+              <label>Monto entregado por el cliente:</label>
+              <input type="number" id="pos-monto-entregado" min="0" step="1" placeholder="$0" oninput="actualizarVueltoPOS()">
+              <div class="form-hint" id="pos-vuelto-texto">Vuelto a entregar: $0</div>
+            </div>
+
+            <button class="btn-primary" style="width: 100%; margin-top: 15px; padding: 12px;" onclick="procesarVentaPOS()">Finalizar Venta</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD (solo Administrador) -->
+    <section id="sec-dashboard" class="tab-content hidden">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <h3 style="margin:0;">📊 Dashboard del Negocio</h3>
+          <div class="form-group" style="margin:0; min-width:220px;">
+            <label for="dashboard-filtro-periodo">Período</label>
+            <select id="dashboard-filtro-periodo" onchange="cargarDashboard(this.value)">
+              <option value="7">Últimos 7 días</option>
+              <option value="30" selected>Últimos 30 días</option>
+              <option value="90">Últimos 90 días</option>
+              <option value="0">Todo el histórico</option>
+            </select>
+          </div>
+        </div>
+        <p class="form-hint" style="margin-top:10px;">
+          La rotación y el margen se calculan solo con ventas registradas después de activar este dashboard; las ventas anteriores no quedaron desglosadas por producto.
+        </p>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">💰 Ingresos del período</div>
+          <div class="kpi-value" id="kpi-ingresos">$0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">📈 Margen estimado</div>
+          <div class="kpi-value" id="kpi-margen">$0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">🧾 Ticket promedio</div>
+          <div class="kpi-value" id="kpi-ticket">$0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">🛒 N° de ventas</div>
+          <div class="kpi-value" id="kpi-numero-ventas">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">📦 Unidades vendidas</div>
+          <div class="kpi-value" id="kpi-unidades">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">🏬 Inventario actual (a costo)</div>
+          <div class="kpi-value" id="kpi-valor-inventario">$0</div>
+        </div>
+      </div>
+
+      <!-- GRÁFICOS -->
+      <div class="dashboard-charts-grid">
+        <div class="card">
+          <h3>🏆 Top 10 más vendidos (unidades)</h3>
+          <canvas id="chart-mas-vendidos" height="220"></canvas>
+        </div>
+        <div class="card">
+          <h3>💳 Ventas por método de pago</h3>
+          <canvas id="chart-metodo-pago" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- TABLAS -->
+      <div class="dashboard-tables-grid">
+        <div class="card">
+          <h3>🏆 Más vendidos</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Unidades</th><th>Ingresos</th></tr></thead>
+              <tbody id="tabla-mas-vendidos-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>💎 Mayor margen efectivo (ganancia real)</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Margen generado</th><th>Unidades</th></tr></thead>
+              <tbody id="tabla-mayor-margen-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🐌 Rotación nula o pobre</h3>
+          <p class="form-hint">Tienen stock, pero casi no se han vendido en el período elegido.</p>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Stock</th><th>Vendidas en el período</th></tr></thead>
+              <tbody id="tabla-rotacion-baja-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>⏳ Próximos a vencer</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Stock</th><th>Vence</th></tr></thead>
+              <tbody id="tabla-proximos-vencer-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card dashboard-alert-card">
+          <h3>🚨 Candidatos a liquidar</h3>
+          <p class="form-hint">Por vencer pronto <strong>y</strong> con poca rotación: buenos candidatos a pack o promoción de recambio.</p>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Stock</th><th>Vence</th></tr></thead>
+              <tbody id="tabla-candidatos-liquidar-body"><tr><td colspan="3" style="text-align:center; color:#777;">Sin datos aún.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>⚠️ Stock crítico</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Producto</th><th>Stock</th><th>Mínimo</th></tr></thead>
+              <tbody id="tabla-stock-critico-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>👤 Ranking por vendedor</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead><tr><th>Vendedor</th><th>Ventas</th><th>Ingresos</th></tr></thead>
+              <tbody id="tabla-ranking-vendedores-body"><tr><td colspan="3" style="text-align:center;">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: FICHA DE PRODUCTO (SKU, descripción, neto, IVA, precio, cantidad) -->
+  <div id="modal-detalle-producto" class="modal-overlay" style="display:none;">
+    <div class="modal-content modal-detalle-content">
+      <h2>🛒 Agregar producto</h2>
+      <div class="detalle-grid">
+        <div><strong>SKU:</strong> <span id="det-sku">-</span></div>
+        <div><strong>Categoría:</strong> <span id="det-categoria">-</span></div>
+        <div style="grid-column: 1 / -1;"><strong>Producto:</strong> <span id="det-nombre">-</span></div>
+        <div><strong>Valor Neto:</strong> <span id="det-neto">$0</span></div>
+        <div><strong>IVA (19%):</strong> <span id="det-iva">$0</span></div>
+        <div style="grid-column: 1 / -1;"><strong>Precio Venta:</strong> <span id="det-precio" style="color:#008080; font-weight:bold;">$0</span></div>
+        <div style="grid-column: 1 / -1; color:#666; font-size:0.85rem;"><span id="det-stock">-</span></div>
+      </div>
+
+      <label style="display:block; text-align:center; font-weight:600; margin-top:10px;">Cantidad</label>
+      <div class="stepper">
+        <button type="button" onclick="cambiarCantidadDetalle(-1)">-</button>
+        <input type="number" id="det-cantidad" value="1" min="1" oninput="actualizarCantidadDetalleManual(this.value)">
+        <button type="button" onclick="cambiarCantidadDetalle(1)">+</button>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="button" id="btn-cerrar-detalle" class="btn-secondary" style="flex:1;">Cancelar</button>
+        <button type="button" id="btn-agregar-detalle" class="btn-primary" style="flex:1;" onclick="confirmarAgregarDetalle()">Agregar al carrito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ESCÁNER DE CÁMARA -->
+  <div id="modal-escaner" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <h2 id="escaner-titulo">📷 Escanear código de barras</h2>
+      <p id="escaner-instrucciones" style="margin-bottom:10px; color:#666; font-size:0.9rem;">Apunta la cámara al código de barras del producto.</p>
+      <div id="lector-camara"></div>
+      <p id="escaner-feedback" style="min-height:24px; margin-top:10px; text-align:center; font-weight:600;"></p>
+      <button type="button" id="btn-cerrar-escaner" class="btn-danger" style="width:100%; margin-top:5px;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: APERTURA DE CAJA -->
+  <div id="modal-apertura-caja" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <h2>🔓 Abrir Caja</h2>
+      <div class="form-group" style="margin-top: 10px;">
+        <label>Monto en efectivo con el que inicia la caja hoy:</label>
+        <input type="number" id="input-monto-apertura" min="0" step="1" placeholder="$0">
+      </div>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="button" class="btn-secondary" style="flex:1;" onclick="ocultarModalAperturaCaja()">Cancelar</button>
+        <button type="button" class="btn-primary" style="flex:1;" onclick="confirmarAperturaCaja()">Abrir Caja</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CIERRE DE CAJA -->
+  <div id="modal-cierre-caja" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <h2>🔒 Cerrar Caja</h2>
+      <div class="detalle-grid">
+        <div><strong>Monto apertura:</strong> <span id="cierre-monto-apertura">$0</span></div>
+        <div><strong>Ventas efectivo hoy:</strong> <span id="cierre-ventas-efectivo">$0</span></div>
+        <div style="grid-column: 1 / -1;"><strong>Monto esperado en caja:</strong> <span id="cierre-monto-esperado" style="color:#008080; font-weight:bold;">$0</span></div>
+      </div>
+      <div class="form-group" style="margin-top: 10px;">
+        <label>Monto contado físicamente en caja:</label>
+        <input type="number" id="input-monto-contado" min="0" step="1" placeholder="$0" oninput="actualizarDiferenciaCierre()">
+        <div class="form-hint" id="cierre-diferencia-texto">Diferencia: $0</div>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="button" class="btn-secondary" style="flex:1;" onclick="ocultarModalCierreCaja()">Cancelar</button>
+        <button type="button" class="btn-danger" style="flex:1;" onclick="confirmarCierreCaja()">Cerrar Caja</button>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    IMPORTANTE: cada vez que subas una nueva versión de app.js o styles.css a GitHub,
+    cambia el número "?v=20260728" de sus <link>/<script> más abajo (por ejemplo a
+    "?v=20260729" o cualquier texto distinto). Esto obliga a los navegadores (sobre
+    todo en celulares) a descargar la versión nueva con un F5 normal, sin necesidad
+    de un refresco forzado (Ctrl+F5) que además cierra la sesión del usuario.
+  -->
+  <!-- Librería para escaneo de códigos de barras / QR con la cámara -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Librería para leer archivos Excel/CSV en el navegador (carga masiva de inventario) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Librería para los gráficos del Dashboard -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+  <script src="app.js?v=20260729"></script>
+</body>
+</html>
