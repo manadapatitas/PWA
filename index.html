@@ -56,6 +56,7 @@
       <button id="nav-btn-peluqueria" class="tab-btn" onclick="cambiarPestana('peluqueria')">✂️ Peluquería</button>
       <button id="nav-btn-inventario" class="tab-btn" onclick="cambiarPestana('inventario')">📦 Inventario</button>
       <button id="nav-btn-caja" class="tab-btn" onclick="cambiarPestana('caja')">💳 POS / Caja</button>
+      <button id="nav-btn-descuentos" class="tab-btn" onclick="cambiarPestana('descuentos')">💸 Descuentos</button>
       <button id="nav-btn-dashboard" class="tab-btn" onclick="cambiarPestana('dashboard')">📊 Dashboard</button>
     </nav>
 
@@ -359,6 +360,7 @@
       <div class="pos-container">
         <div class="card pos-catalog">
           <h3>🛒 Punto de Venta</h3>
+          <div id="banner-sugerencia-combo" class="hidden" style="background:#fff8e1; border:2px solid #f9a825; border-radius:8px; padding:12px; margin-bottom:14px; font-weight:600; color:#7a5c00;"></div>
           <div class="pos-search-row">
             <input type="text" id="pos-buscar" placeholder="🔍 Escanea o escribe nombre / SKU y presiona Enter..." oninput="filtrarProductosPOS()">
             <button type="button" id="btn-escanear-camara" class="btn-scan" title="Escanear un producto (con confirmación de cantidad)">📷</button>
@@ -404,6 +406,68 @@
     </section>
 
     <!-- DASHBOARD (solo Administrador) -->
+    <!-- DESCUENTOS (solo Admin): un mecanismo para descuento unitario y cruzado/combo -->
+    <section id="sec-descuentos" class="tab-content hidden">
+      <div class="card">
+        <h3>💸 Crear Descuento</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Producto a descontar</label>
+            <select id="desc-producto" onchange="actualizarPreviewDescuento()">
+              <option value="">-- Selecciona un producto --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tipo de descuento</label>
+            <select id="desc-tipo" onchange="alCambiarTipoDescuento()">
+              <option value="unitario">Unitario (sin condición)</option>
+              <option value="cruzado">Cruzado / Combo (requiere otro producto en el carrito)</option>
+            </select>
+          </div>
+          <div class="form-group hidden" id="grupo-desc-principal">
+            <label>Producto principal (requerido para activar el descuento)</label>
+            <select id="desc-principal" onchange="actualizarPreviewDescuento()">
+              <option value="">-- Selecciona un producto --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tipo de valor</label>
+            <select id="desc-tipo-valor" onchange="actualizarPreviewDescuento()">
+              <option value="Porcentaje">Porcentaje (%)</option>
+              <option value="Monto_Fijo">Monto fijo ($)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Valor del descuento</label>
+            <input type="number" id="desc-valor" placeholder="Ej: 20" min="0" oninput="actualizarPreviewDescuento()">
+          </div>
+        </div>
+
+        <div id="desc-preview-box" class="hidden" style="margin-top: 15px; padding: 12px; background-color: #f8f9fa; border-radius: 8px; border-left: 5px solid #008080;">
+          <div class="detalle-grid" id="desc-preview-grid"></div>
+        </div>
+
+        <button type="button" class="btn-primary" style="margin-top: 15px;" onclick="crearDescuento()">Crear Descuento</button>
+      </div>
+
+      <div class="card">
+        <h3>📋 Descuentos activos</h3>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Condición</th>
+                <th>Descuento</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="desc-tabla-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section id="sec-dashboard" class="tab-content hidden">
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">

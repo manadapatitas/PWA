@@ -22,6 +22,7 @@ let listaCitasGlobal = [];
 let listaClinicaGlobal = [];
 let listaPeluqueriaGlobal = [];
 let listaInventarioGlobal = [];
+let listaDescuentosGlobal = [];
 let carritoPOS = [];
 let estadoCajaHoy = { abierta: false };
 let categoriaFiltroPOS = 'Todos';
@@ -232,9 +233,9 @@ function cambiarPestana(idPestana) {
     return;
   }
 
-  // El Dashboard es exclusivo de Administrador: refuerzo en el frontend además
-  // del bloqueo real que ya existe en el backend (tienePermiso en codigo.gs).
-  if (idPestana === 'dashboard' && usuarioActual.rol !== 'admin') {
+  // El Dashboard y Descuentos son exclusivos de Administrador: refuerzo en el
+  // frontend además del bloqueo real que ya existe en el backend (tienePermiso en codigo.gs).
+  if ((idPestana === 'dashboard' || idPestana === 'descuentos') && usuarioActual.rol !== 'admin') {
     alert('Esta sección es exclusiva del perfil Administrador.');
     return;
   }
@@ -268,6 +269,8 @@ function cambiarPestana(idPestana) {
     renderizarPOS();
     cargarEstadoCaja();
     cargarRankingVentas().then(() => filtrarProductosPOS());
+  } else if (idPestana === 'descuentos') {
+    renderizarDescuentos();
   } else if (idPestana === 'dashboard') {
     const selectPeriodo = document.getElementById('dashboard-filtro-periodo');
     cargarDashboard(selectPeriodo ? selectPeriodo.value : 30);
@@ -314,11 +317,13 @@ async function cargarDatosBackend() {
     listaClinicaGlobal = data.clinica || [];
     listaPeluqueriaGlobal = data.peluqueria || [];
     listaInventarioGlobal = data.inventario || [];
+    listaDescuentosGlobal = data.descuentos || [];
 
     poblarCombosTutores();
     renderizarParrillaAgenda();
     renderizarTablaInventario();
     renderizarPOS();
+    renderizarDescuentos();
   } catch (err) {
     console.error("Error cargando datos:", err);
     alert("No se pudo cargar la información. Revisa tu conexión a internet.");
@@ -1578,6 +1583,7 @@ function renderizarCarritoPOS() {
   if (carritoPOS.length === 0) {
     contenedor.innerHTML = '<p style="color: #777; text-align: center; margin-top: 20px;">El carrito está vacío</p>';
     if (totalElem) totalElem.innerText = '$0';
+    actualizarBannerCombo();
     return;
   }
 
@@ -1585,15 +1591,20 @@ function renderizarCarritoPOS() {
   let totalCalculado = 0;
 
   carritoPOS.forEach((item, index) => {
-    const subtotal = item.precio * item.cantidad;
+    const precioEfectivo = calcularPrecioEfectivoItem(item, carritoPOS);
+    const tieneDescuento = precioEfectivo < item.precio;
+    const subtotal = precioEfectivo * item.cantidad;
     totalCalculado += subtotal;
 
     const row = document.createElement('div');
     row.className = 'cart-item-row';
+    const lineaPrecioUnitario = tieneDescuento
+      ? `<small><s style="color:#999;">$${item.precio.toLocaleString('es-CL')}</s> $${precioEfectivo.toLocaleString('es-CL')} c/u 🏷️</small>`
+      : `<small>$${item.precio.toLocaleString('es-CL')} c/u</small>`;
     row.innerHTML = `
       <div style="flex:1;">
         <strong>${item.nombre}</strong><br>
-        <small>$${item.precio.toLocaleString('es-CL')} c/u</small>
+        ${lineaPrecioUnitario}
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
         <button onclick="modificarCantidadCarrito(${index}, -1)">-</button>
@@ -1609,6 +1620,7 @@ function renderizarCarritoPOS() {
 
   if (totalElem) totalElem.innerText = `$${totalCalculado.toLocaleString('es-CL')}`;
   actualizarVueltoPOS();
+  actualizarBannerCombo();
 }
 
 function modificarCantidadCarrito(index, cambio) {
@@ -1767,7 +1779,7 @@ function alCambiarMetodoPagoPOS() {
 }
 
 function actualizarVueltoPOS() {
-  const total = carritoPOS.reduce((sum, i) => sum + (i.precio * i.cantidad), 0);
+  const total = calcularTotalCarritoConDescuentos(carritoPOS);
   const entregado = obtenerValorNumerico('pos-monto-entregado');
   const vuelto = entregado - total;
   const texto = document.getElementById('pos-vuelto-texto');
@@ -1805,12 +1817,16 @@ async function procesarVentaPOS() {
   }
 
   const metodoPago = document.getElementById('pos-metodo-pago').value;
-  const totalCalculado = carritoPOS.reduce((sum, i) => sum + (i.precio * i.cantidad), 0);
+  // Los ítems se envían con el precio EFECTIVO (ya con descuento aplicado si corresponde),
+  // no el precio de catálogo — así el registro en Ventas_Detalle y el margen quedan
+  // consistentes con lo que realmente se cobró.
+  const itemsConDescuento = carritoPOS.map(i => ({ ...i, precio: calcularPrecioEfectivoItem(i, carritoPOS) }));
+  const totalCalculado = itemsConDescuento.reduce((sum, i) => sum + (i.precio * i.cantidad), 0);
 
   const payload = {
     metodo_pago: metodoPago,
     total: totalCalculado,
-    items: carritoPOS
+    items: itemsConDescuento
   };
 
   if (metodoPago === 'Efectivo') {
@@ -1855,6 +1871,201 @@ async function cargarDashboard(dias = 30) {
   } catch (err) {
     alert('Error al cargar el dashboard: ' + err.message);
   }
+}
+
+// -----------------------------------------------------------------
+// DESCUENTOS (solo Admin): un mecanismo para descuento unitario y cruzado.
+// El precio final NUNCA se guarda fijo: se calcula en el momento, tanto
+// acá (vista previa del Admin) como en el POS (venta real).
+// -----------------------------------------------------------------
+
+function calcularPrecioConValorDescuento(precioOriginal, tipoValor, valor) {
+  if (tipoValor === 'Porcentaje') {
+    return Math.round(precioOriginal * (1 - (Number(valor) || 0) / 100));
+  }
+  return Math.max(0, Math.round(precioOriginal - (Number(valor) || 0)));
+}
+
+function renderizarDescuentos() {
+  const selectProducto = document.getElementById('desc-producto');
+  const selectPrincipal = document.getElementById('desc-principal');
+  if (!selectProducto || !selectPrincipal) return; // sección no visible (no es Admin)
+
+  const opciones = listaInventarioGlobal.map(p =>
+    `<option value="${p.sku || p.codigo}">${p.nombre} ($${Number(p.precio_venta || p.precio || 0).toLocaleString('es-CL')})</option>`
+  ).join('');
+  selectProducto.innerHTML = '<option value="">-- Selecciona un producto --</option>' + opciones;
+  selectPrincipal.innerHTML = '<option value="">-- Selecciona un producto --</option>' + opciones;
+
+  renderizarTablaDescuentos();
+}
+
+function renderizarTablaDescuentos() {
+  const tbody = document.getElementById('desc-tabla-body');
+  if (!tbody) return;
+  const activos = listaDescuentosGlobal.filter(d => (d.activo || '').toLowerCase() !== 'no');
+
+  if (activos.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">No hay descuentos activos.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = activos.map(d => {
+    const condicion = d.sku_principal ? `Combo con: ${d.nombre_principal}` : 'Sin condición (unitario)';
+    const valorTexto = d.tipo_valor === 'Porcentaje' ? `${d.valor}%` : `$${Number(d.valor).toLocaleString('es-CL')}`;
+    return `
+      <tr>
+        <td>${d.nombre_producto}</td>
+        <td>${condicion}</td>
+        <td>${valorTexto}</td>
+        <td><button class="btn-danger" style="padding:4px 10px; font-size:0.8rem;" onclick="eliminarDescuentoClick('${d.id_descuento}')">Eliminar</button></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function alCambiarTipoDescuento() {
+  const tipo = document.getElementById('desc-tipo').value;
+  const grupo = document.getElementById('grupo-desc-principal');
+  if (tipo === 'cruzado') {
+    grupo.classList.remove('hidden');
+  } else {
+    grupo.classList.add('hidden');
+    document.getElementById('desc-principal').value = '';
+  }
+  actualizarPreviewDescuento();
+}
+
+function actualizarPreviewDescuento() {
+  const skuProducto = document.getElementById('desc-producto').value;
+  const tipo = document.getElementById('desc-tipo').value;
+  const skuPrincipal = document.getElementById('desc-principal').value;
+  const tipoValor = document.getElementById('desc-tipo-valor').value;
+  const valor = Number(document.getElementById('desc-valor').value) || 0;
+  const previewBox = document.getElementById('desc-preview-box');
+  const previewGrid = document.getElementById('desc-preview-grid');
+
+  if (!skuProducto || valor <= 0) {
+    previewBox.classList.add('hidden');
+    return;
+  }
+
+  const producto = listaInventarioGlobal.find(p => (p.sku || p.codigo) === skuProducto);
+  if (!producto) { previewBox.classList.add('hidden'); return; }
+
+  const precioOriginal = Number(producto.precio_venta || producto.precio || 0);
+  const costo = Number(producto.costo || 0);
+  const precioFinal = calcularPrecioConValorDescuento(precioOriginal, tipoValor, valor);
+  const margen = precioFinal - costo; // margen bruto simplificado, para una vista rápida de referencia
+  const colorMargen = margen >= 0 ? '#2e7d32' : '#c62828';
+
+  let html = `
+    <div><strong>Precio original:</strong> $${precioOriginal.toLocaleString('es-CL')}</div>
+    <div><strong>Precio con descuento:</strong> $${precioFinal.toLocaleString('es-CL')}</div>
+    <div><strong>Costo del producto:</strong> $${costo.toLocaleString('es-CL')}</div>
+    <div><strong>Margen resultante:</strong> <span style="color:${colorMargen}; font-weight:bold;">$${margen.toLocaleString('es-CL')}</span>${margen < 0 ? ' (pérdida)' : ''}</div>
+  `;
+
+  if (tipo === 'cruzado' && skuPrincipal) {
+    const principal = listaInventarioGlobal.find(p => (p.sku || p.codigo) === skuPrincipal);
+    if (principal) {
+      const precioPrincipal = Number(principal.precio_venta || principal.precio || 0);
+      const valorCombo = precioPrincipal + precioFinal;
+      html += `<div style="grid-column: 1/-1;"><strong>Valor final del combo (${principal.nombre} + ${producto.nombre}):</strong> <span style="color:#008080; font-weight:bold;">$${valorCombo.toLocaleString('es-CL')}</span></div>`;
+    }
+  }
+
+  previewGrid.innerHTML = html;
+  previewBox.classList.remove('hidden');
+}
+
+async function crearDescuento() {
+  const skuProducto = document.getElementById('desc-producto').value;
+  const tipo = document.getElementById('desc-tipo').value;
+  const skuPrincipal = document.getElementById('desc-principal').value;
+  const tipoValor = document.getElementById('desc-tipo-valor').value;
+  const valor = Number(document.getElementById('desc-valor').value) || 0;
+
+  if (!skuProducto) { alert('Selecciona un producto a descontar.'); return; }
+  if (tipo === 'cruzado' && !skuPrincipal) { alert('Selecciona el producto principal del combo.'); return; }
+  if (valor <= 0) { alert('Ingresa un valor de descuento válido.'); return; }
+
+  try {
+    await enviarFormularioBackend('guardarDescuento', {
+      sku_producto: skuProducto,
+      sku_principal: tipo === 'cruzado' ? skuPrincipal : '',
+      tipo_valor: tipoValor,
+      valor: valor
+    });
+    alert('✅ Descuento creado.');
+    document.getElementById('desc-producto').value = '';
+    document.getElementById('desc-principal').value = '';
+    document.getElementById('desc-valor').value = '';
+    document.getElementById('desc-preview-box').classList.add('hidden');
+    await cargarDatosBackend();
+  } catch (err) {
+    alert('Error al crear el descuento: ' + err.message);
+  }
+}
+
+async function eliminarDescuentoClick(idDescuento) {
+  if (!confirm('¿Eliminar este descuento?')) return;
+  try {
+    await enviarFormularioBackend('eliminarDescuento', { id_descuento: idDescuento });
+    await cargarDatosBackend();
+  } catch (err) {
+    alert('Error al eliminar: ' + err.message);
+  }
+}
+
+// -----------------------------------------------------------------
+// APLICACIÓN DE DESCUENTOS EN EL POS (venta real)
+// -----------------------------------------------------------------
+
+// Devuelve el descuento activo aplicable a un SKU, dado el contenido actual
+// del carrito (el cruzado exige que el producto principal esté presente).
+// El cruzado tiene prioridad sobre el unitario si ambos calzan.
+function obtenerDescuentoAplicable(skuProducto, carritoActual) {
+  const activos = listaDescuentosGlobal.filter(d => (d.activo || '').toLowerCase() !== 'no');
+  const cruzado = activos.find(d => d.sku_producto === skuProducto && d.sku_principal &&
+    carritoActual.some(i => i.codigo === d.sku_principal));
+  if (cruzado) return cruzado;
+  return activos.find(d => d.sku_producto === skuProducto && !d.sku_principal);
+}
+
+function calcularPrecioEfectivoItem(item, carritoActual) {
+  const descuento = obtenerDescuentoAplicable(item.codigo, carritoActual);
+  if (!descuento) return item.precio;
+  return calcularPrecioConValorDescuento(item.precio, descuento.tipo_valor, Number(descuento.valor));
+}
+
+function calcularTotalCarritoConDescuentos(carritoActual) {
+  return carritoActual.reduce((sum, i) => sum + calcularPrecioEfectivoItem(i, carritoActual) * i.cantidad, 0);
+}
+
+// Revisa si algún combo cruzado tiene su producto principal en el carrito
+// pero le falta el producto complementario, y muestra el aviso al cajero.
+function actualizarBannerCombo() {
+  const banner = document.getElementById('banner-sugerencia-combo');
+  if (!banner) return;
+
+  const activos = listaDescuentosGlobal.filter(d => (d.activo || '').toLowerCase() !== 'no' && d.sku_principal);
+  const sugerencia = activos.find(d =>
+    carritoPOS.some(i => i.codigo === d.sku_principal) &&
+    !carritoPOS.some(i => i.codigo === d.sku_producto)
+  );
+
+  if (!sugerencia) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+  const productoDescontado = listaInventarioGlobal.find(p => (p.sku || p.codigo) === sugerencia.sku_producto);
+  const precioOriginal = productoDescontado ? Number(productoDescontado.precio_venta || productoDescontado.precio || 0) : 0;
+  const precioConDescuento = calcularPrecioConValorDescuento(precioOriginal, sugerencia.tipo_valor, Number(sugerencia.valor));
+
+  banner.innerHTML = `💡 ¿Agregar <strong>${sugerencia.nombre_producto}</strong> con descuento? Combo: <strong>$${precioConDescuento.toLocaleString('es-CL')}</strong> en vez de $${precioOriginal.toLocaleString('es-CL')}.`;
+  banner.classList.remove('hidden');
 }
 
 function formatearMoneda(valor) {
