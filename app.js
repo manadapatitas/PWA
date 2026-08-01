@@ -1967,27 +1967,29 @@ function imprimirComprobanteVenta() {
     <title>Comprobante ${venta.idVenta}</title>
     <style>
       @page { size: 72mm auto; margin: 2mm; }
-      * { box-sizing: border-box; }
-      body { font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 1.5; color: #000; width: 72mm; margin: 0 auto; padding: 2mm; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-family: 'Courier New', Courier, monospace; font-size: 12px; line-height: 1.55; color: #000; width: 72mm; margin: 0 auto; padding: 2mm; }
+      .logo-negocio { display: block; width: 30mm; margin: 0 auto 4px; }
       .centrado { text-align: center; }
-      .nombre-negocio { font-size: 15px; font-weight: bold; letter-spacing: 0.5px; }
-      .gris { color: #444; }
-      .separador { border-top: 1px dashed #000; margin: 6px 0; }
-      .fila { display: flex; justify-content: space-between; }
-      .item-fila { display: flex; justify-content: space-between; margin-top: 4px; }
-      .linea-combo { color: #444; padding-left: 6px; font-size: 10px; }
+      .nombre-negocio { font-size: 16px; font-weight: bold; letter-spacing: 0.5px; }
+      .secundario { font-weight: normal; }
+      .separador { border-top: 2px dashed #000; margin: 6px 0; }
+      .fila { display: flex; justify-content: space-between; font-weight: bold; }
+      .item-fila { display: flex; justify-content: space-between; margin-top: 4px; font-weight: bold; }
+      .linea-combo { padding-left: 6px; font-size: 11px; }
       .tachado { text-decoration: line-through; }
-      .resumen-fila { display: flex; justify-content: space-between; margin-top: 3px; }
-      .resumen-fila.secundario { color: #444; }
-      .total-fila { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; }
+      .resumen-fila { display: flex; justify-content: space-between; margin-top: 3px; font-weight: bold; }
+      .resumen-fila.secundario { font-weight: normal; }
+      .total-fila { display: flex; justify-content: space-between; font-size: 15px; font-weight: bold; margin-top: 4px; }
       .aviso-no-tributario { text-align: center; font-weight: bold; margin: 8px 0; }
-      .gracias { text-align: center; margin-top: 8px; }
+      .gracias { text-align: center; margin-top: 8px; font-weight: bold; }
     </style></head><body>
     <div class="centrado">
+      <img class="logo-negocio" src="${new URL('logo_termico.png', window.location.href).href}" alt="" onerror="this.style.display='none'">
       <div class="nombre-negocio">${NEGOCIO_NOMBRE.toUpperCase()}</div>
-      <div class="gris">${NEGOCIO_RUBRO}</div>
-      <div class="gris">${NEGOCIO_DIRECCION}</div>
-      <div class="gris">${NEGOCIO_TELEFONO}</div>
+      <div class="secundario">${NEGOCIO_RUBRO}</div>
+      <div class="secundario">${NEGOCIO_DIRECCION}</div>
+      <div class="secundario">${NEGOCIO_TELEFONO}</div>
     </div>
     <div class="separador"></div>
     <div class="fila"><span>Venta N</span><span>${venta.idVenta}</span></div>
@@ -2242,7 +2244,7 @@ function actualizarBannerCombo() {
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
       <span>
         🏷️ <strong>Promoción activa</strong><br>
-        Por la compra de "${sugerencia.nombre_principal}", ¿agregar <strong>${sugerencia.nombre_producto}</strong> con descuento? Combo: <strong>$${precioConDescuento.toLocaleString('es-CL')}</strong> en vez de $${precioOriginal.toLocaleString('es-CL')}.
+        Por la compra de <strong>${sugerencia.nombre_principal}</strong>, ¿agregar <strong>${sugerencia.nombre_producto}</strong> con descuento? Combo: <strong>$${precioConDescuento.toLocaleString('es-CL')}</strong> en vez de $${precioOriginal.toLocaleString('es-CL')}.
       </span>
       <button type="button" class="btn-primary" style="padding:6px 14px; font-size:0.85rem; white-space:nowrap;" onclick="agregarSugerenciaCombo('${sugerencia.sku_producto}')">✅ Sí, agregar</button>
     </div>
