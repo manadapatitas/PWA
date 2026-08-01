@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manada Patitas - Gestión Vet & Petshop</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=20260802">
+  <link rel="stylesheet" href="styles.css?v=20260803">
 </head>
 <body>
 
@@ -398,7 +398,7 @@
               <div class="form-hint" id="pos-vuelto-texto">Vuelto a entregar: $0</div>
             </div>
 
-            <button class="btn-primary" style="width: 100%; margin-top: 15px; padding: 12px;" onclick="procesarVentaPOS()">Finalizar Venta</button>
+            <button id="btn-finalizar-venta" class="btn-primary" style="width: 100%; margin-top: 15px; padding: 12px;" onclick="procesarVentaPOS()">Finalizar Venta</button>
             <button class="btn-danger" style="width: 100%; margin-top: 8px; padding: 10px;" onclick="cancelarVentaPOS()">🗑️ Cancelar Venta</button>
           </div>
         </div>
@@ -447,7 +447,7 @@
           <div class="detalle-grid" id="desc-preview-grid"></div>
         </div>
 
-        <button type="button" class="btn-primary" style="margin-top: 15px;" onclick="crearDescuento()">Crear Descuento</button>
+        <button id="btn-crear-descuento" type="button" class="btn-primary" style="margin-top: 15px;" onclick="crearDescuento()">Crear Descuento</button>
       </div>
 
       <div class="card">
@@ -712,6 +712,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- Librería para los gráficos del Dashboard -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
-  <script src="app.js?v=20260802"></script>
+  <script src="app.js?v=20260803"></script>
 </body>
 </html>

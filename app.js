@@ -298,6 +298,39 @@ function configurarFechaPorDefecto() {
 // -----------------------------------------------------------------
 // BACKEND
 // -----------------------------------------------------------------
+// Actualiza solo las listas en memoria que vienen en la respuesta del
+// backend (cada guardarX() ahora devuelve la hoja que modificó), y vuelve a
+// pintar solo lo correspondiente. Reemplaza al viejo patrón de volver a
+// pedir TODO con cargarDatosBackend() después de cada guardado -- eso hacía
+// que cada acción disparara un segundo viaje completo al servidor (leyendo
+// 6 hojas) además del propio guardado, duplicando la espera innecesariamente.
+function actualizarDatosLocales(data) {
+  if (!data) return;
+  if (data.tutores !== undefined) {
+    listaPacientesGlobal = data.tutores;
+    poblarCombosTutores();
+  }
+  if (data.agenda !== undefined) {
+    listaCitasGlobal = data.agenda;
+    renderizarParrillaAgenda();
+  }
+  if (data.clinica !== undefined) {
+    listaClinicaGlobal = data.clinica;
+  }
+  if (data.peluqueria !== undefined) {
+    listaPeluqueriaGlobal = data.peluqueria;
+  }
+  if (data.inventario !== undefined) {
+    listaInventarioGlobal = data.inventario;
+    renderizarTablaInventario();
+    renderizarPOS();
+  }
+  if (data.descuentos !== undefined) {
+    listaDescuentosGlobal = data.descuentos;
+    renderizarDescuentos();
+  }
+}
+
 async function cargarDatosBackend() {
   try {
     const res = await fetch(URL_WEB_APP, {
@@ -532,7 +565,7 @@ async function cancelarCitaClick(idCita, nombreMascota) {
   try {
     const json = await enviarFormularioBackend('cancelarCita', { id_cita: idCita });
     alert('✅ ' + json.message);
-    await cargarDatosBackend();
+    actualizarDatosLocales(json);
   } catch (err) {
     alert('Error al cancelar: ' + err.message);
   }
@@ -556,14 +589,18 @@ async function guardarCita(e) {
     servicio: document.getElementById('agenda-servicio').value
   };
 
+  const boton = document.querySelector('#form-agenda button[type="submit"]');
+  const textoOriginal = bloquearBoton(boton, 'Reservando...');
   try {
     const json = await enviarFormularioBackend('guardarCita', payload);
     alert('📅 ' + json.message);
     document.getElementById('form-agenda').reset();
     actualizarMascotasAgenda();
-    await cargarDatosBackend();
+    actualizarDatosLocales(json);
   } catch (err) {
     alert('Error al reservar: ' + err.message);
+  } finally {
+    desbloquearBoton(boton, textoOriginal);
   }
 }
 
@@ -582,6 +619,8 @@ async function guardarTutor(e) {
     peso: document.getElementById('tut-peso').value
   };
 
+  const boton = document.querySelector('#form-tutor button[type="submit"]');
+  const textoOriginal = bloquearBoton(boton, 'Guardando...');
   try {
     const json = await enviarFormularioBackend('guardarTutor', payload);
 
@@ -591,7 +630,7 @@ async function guardarTutor(e) {
         const json2 = await enviarFormularioBackend('guardarTutor', { ...payload, confirmar_actualizacion: true });
         alert('🐾 ' + json2.message);
         document.getElementById('form-tutor').reset();
-        await cargarDatosBackend();
+        actualizarDatosLocales(json2);
       } else {
         alert('No se modificó la ficha existente.');
       }
@@ -600,9 +639,11 @@ async function guardarTutor(e) {
 
     alert('🐾 ' + json.message);
     document.getElementById('form-tutor').reset();
-    await cargarDatosBackend();
+    actualizarDatosLocales(json);
   } catch (err) {
     alert('Error: ' + err.message);
+  } finally {
+    desbloquearBoton(boton, textoOriginal);
   }
 }
 
@@ -767,14 +808,18 @@ async function guardarAtencionClinica(e) {
     receta: document.getElementById('cli-receta').value
   };
 
+  const boton = document.querySelector('#form-clinica button[type="submit"]');
+  const textoOriginal = bloquearBoton(boton, 'Guardando...');
   try {
-    await enviarFormularioBackend('guardarAtencionClinica', payload);
+    const json = await enviarFormularioBackend('guardarAtencionClinica', payload);
     alert('🩺 Consulta registrada.');
     document.getElementById('form-clinica').reset();
     document.getElementById('cli-info-paciente').classList.add('hidden');
-    await cargarDatosBackend();
+    actualizarDatosLocales(json);
   } catch (err) {
     alert('Error: ' + err.message);
+  } finally {
+    desbloquearBoton(boton, textoOriginal);
   }
 }
 
@@ -815,13 +860,17 @@ async function guardarPeluqueria(e) {
     observaciones: document.getElementById('pel-obs').value
   };
 
+  const boton = document.querySelector('#form-peluqueria button[type="submit"]');
+  const textoOriginal = bloquearBoton(boton, 'Guardando...');
   try {
-    await enviarFormularioBackend('guardarPeluqueria', payload);
+    const json = await enviarFormularioBackend('guardarPeluqueria', payload);
     alert('✂️ Registro guardado.');
     document.getElementById('form-peluqueria').reset();
-    await cargarDatosBackend();
+    actualizarDatosLocales(json);
   } catch (err) {
     alert('Error: ' + err.message);
+  } finally {
+    desbloquearBoton(boton, textoOriginal);
   }
 }
 
@@ -1001,15 +1050,19 @@ async function guardarProducto(e) {
     redondeo: obtenerModoRedondeoSeleccionado()
   };
 
+  const boton = document.querySelector('#form-inventario button[type="submit"]');
+  const textoOriginal = bloquearBoton(boton, 'Guardando...');
   try {
     const json = await enviarFormularioBackend('guardarProducto', payload);
     alert('📦 ' + json.message);
     document.getElementById('form-inventario').reset();
     document.getElementById('inv-margen').value = "30";
     calcularPrecioVentaSugerido();
-    await cargarDatosBackend();
+    actualizarDatosLocales(json);
   } catch (err) {
     alert('Error guardando producto: ' + err.message);
+  } finally {
+    desbloquearBoton(boton, textoOriginal);
   }
 }
 
@@ -1512,7 +1565,7 @@ async function procesarArchivoExcelInventario(inputFile) {
 
     marcarEstado('');
     inputFile.value = '';
-    await cargarDatosBackend();
+    actualizarDatosLocales(json);
   } catch (err) {
     alert('Error al procesar el archivo: ' + err.message);
     marcarEstado('');
@@ -1855,6 +1908,8 @@ async function procesarVentaPOS() {
     payload.vuelto = entregado - totalCalculado;
   }
 
+  const boton = document.getElementById('btn-finalizar-venta');
+  const textoOriginal = bloquearBoton(boton, 'Procesando...');
   try {
     const respuesta = await enviarFormularioBackend('guardarVenta', payload);
 
@@ -1888,9 +1943,11 @@ async function procesarVentaPOS() {
     const inputEntregado = document.getElementById('pos-monto-entregado');
     if (inputEntregado) inputEntregado.value = '';
     actualizarVueltoPOS();
-    await cargarDatosBackend();
+    actualizarDatosLocales(respuesta);
   } catch (err) {
     alert("Error procesando venta: " + err.message);
+  } finally {
+    desbloquearBoton(boton, textoOriginal);
   }
 }
 
@@ -2165,8 +2222,10 @@ async function crearDescuento() {
   if (tipo === 'cruzado' && !skuPrincipal) { alert('Selecciona el producto principal del combo.'); return; }
   if (valor <= 0) { alert('Ingresa un valor de descuento válido.'); return; }
 
+  const boton = document.getElementById('btn-crear-descuento');
+  const textoOriginal = bloquearBoton(boton, 'Creando...');
   try {
-    await enviarFormularioBackend('guardarDescuento', {
+    const json = await enviarFormularioBackend('guardarDescuento', {
       sku_producto: skuProducto,
       sku_principal: tipo === 'cruzado' ? skuPrincipal : '',
       tipo_valor: tipoValor,
@@ -2177,17 +2236,19 @@ async function crearDescuento() {
     document.getElementById('desc-principal').value = '';
     document.getElementById('desc-valor').value = '';
     document.getElementById('desc-preview-box').classList.add('hidden');
-    await cargarDatosBackend();
+    actualizarDatosLocales(json);
   } catch (err) {
     alert('Error al crear el descuento: ' + err.message);
+  } finally {
+    desbloquearBoton(boton, textoOriginal);
   }
 }
 
 async function eliminarDescuentoClick(idDescuento) {
   if (!confirm('¿Eliminar este descuento?')) return;
   try {
-    await enviarFormularioBackend('eliminarDescuento', { id_descuento: idDescuento });
-    await cargarDatosBackend();
+    const json = await enviarFormularioBackend('eliminarDescuento', { id_descuento: idDescuento });
+    actualizarDatosLocales(json);
   } catch (err) {
     alert('Error al eliminar: ' + err.message);
   }
@@ -2260,6 +2321,24 @@ function agregarSugerenciaCombo(skuProducto) {
   const producto = listaInventarioGlobal.find(p => (p.sku || p.codigo || '').toString() === skuProducto.toString());
   if (!producto) return;
   agregarAlCarrito(producto.sku || producto.codigo, producto.nombre, Number(producto.precio_venta || producto.precio || 0), Number(producto.stock || 0), 1);
+}
+
+// Bloquea un botón mientras dura una petición al backend, mostrando un texto
+// de "cargando", para que un clic repetido (por la demora normal de Apps
+// Script) no dispare la misma acción dos veces. Usar siempre con try/finally
+// -> desbloquearBoton(), para que quede reactivado también si algo falla.
+function bloquearBoton(boton, textoCargando) {
+  if (!boton) return null;
+  const textoOriginal = boton.innerText;
+  boton.disabled = true;
+  boton.innerText = textoCargando;
+  return textoOriginal;
+}
+
+function desbloquearBoton(boton, textoOriginal) {
+  if (!boton) return;
+  boton.disabled = false;
+  if (textoOriginal !== null && textoOriginal !== undefined) boton.innerText = textoOriginal;
 }
 
 function formatearMoneda(valor) {
