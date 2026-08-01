@@ -2063,9 +2063,21 @@ function actualizarBannerCombo() {
   const productoDescontado = listaInventarioGlobal.find(p => (p.sku || p.codigo) === sugerencia.sku_producto);
   const precioOriginal = productoDescontado ? Number(productoDescontado.precio_venta || productoDescontado.precio || 0) : 0;
   const precioConDescuento = calcularPrecioConValorDescuento(precioOriginal, sugerencia.tipo_valor, Number(sugerencia.valor));
+  const stockDisponible = productoDescontado ? Number(productoDescontado.stock || 0) : 0;
 
-  banner.innerHTML = `💡 ¿Agregar <strong>${sugerencia.nombre_producto}</strong> con descuento? Combo: <strong>$${precioConDescuento.toLocaleString('es-CL')}</strong> en vez de $${precioOriginal.toLocaleString('es-CL')}.`;
+  banner.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span>💡 ¿Agregar <strong>${sugerencia.nombre_producto}</strong> con descuento? Combo: <strong>$${precioConDescuento.toLocaleString('es-CL')}</strong> en vez de $${precioOriginal.toLocaleString('es-CL')}.</span>
+      <button type="button" class="btn-primary" style="padding:6px 14px; font-size:0.85rem; white-space:nowrap;" onclick="agregarSugerenciaCombo('${sugerencia.sku_producto}')">✅ Sí, agregar</button>
+    </div>
+  `;
   banner.classList.remove('hidden');
+}
+
+function agregarSugerenciaCombo(skuProducto) {
+  const producto = listaInventarioGlobal.find(p => (p.sku || p.codigo) === skuProducto);
+  if (!producto) return;
+  agregarAlCarrito(producto.sku || producto.codigo, producto.nombre, Number(producto.precio_venta || producto.precio || 0), Number(producto.stock || 0), 1);
 }
 
 function formatearMoneda(valor) {
