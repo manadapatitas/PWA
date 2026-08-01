@@ -24,6 +24,17 @@ let listaPeluqueriaGlobal = [];
 let listaInventarioGlobal = [];
 let carritoPOS = [];
 let estadoCajaHoy = { abierta: false };
+let categoriaFiltroPOS = 'Todos';
+let rankingVentasPorSKU = {};
+
+async function cargarRankingVentas() {
+  try {
+    const json = await enviarFormularioBackend('obtenerRankingVentas', {});
+    rankingVentasPorSKU = json.ranking || {};
+  } catch (err) {
+    rankingVentasPorSKU = {}; // si falla, la grilla igual funciona, solo sin orden por más vendidos
+  }
+}
 
 // Estado del Dashboard (solo Administrador)
 let datosDashboard = null;
@@ -256,6 +267,7 @@ function cambiarPestana(idPestana) {
   } else if (idPestana === 'caja') {
     renderizarPOS();
     cargarEstadoCaja();
+    cargarRankingVentas().then(() => filtrarProductosPOS());
   } else if (idPestana === 'dashboard') {
     const selectPeriodo = document.getElementById('dashboard-filtro-periodo');
     cargarDashboard(selectPeriodo ? selectPeriodo.value : 30);
@@ -1082,46 +1094,95 @@ function renderizarPOS() {
   renderizarCarritoPOS();
 }
 
+function renderizarFiltrosCategoriaPOS() {
+  const contenedor = document.getElementById('pos-filtros-categoria');
+  if (!contenedor) return;
+
+  const categoriasPresentes = [...new Set(listaInventarioGlobal.map(p => p.categoria || 'Otros'))];
+  const categorias = ['Todos', ...categoriasPresentes];
+
+  contenedor.innerHTML = categorias.map(cat => {
+    const activo = cat === categoriaFiltroPOS;
+    const estilo = activo
+      ? 'background:#008080; color:#fff; border:1px solid #008080;'
+      : 'background:#fff; color:#555; border:1px solid #ccc;';
+    return `<span onclick="alSeleccionarCategoriaPOS('${cat.replace(/'/g, "\\'")}')" style="cursor:pointer; font-size:0.8rem; padding:5px 12px; border-radius:14px; ${estilo}">${cat}</span>`;
+  }).join('');
+}
+
+function alSeleccionarCategoriaPOS(categoria) {
+  categoriaFiltroPOS = categoria;
+  renderizarFiltrosCategoriaPOS();
+  filtrarProductosPOS();
+}
+
+function crearTarjetaProductoPOS(p, esServicio) {
+  const card = document.createElement('div');
+  card.className = 'pos-card-item';
+  if (esServicio) card.style.cssText = 'background:#e0f2f1; border-color:#80cbc4;';
+
+  const nombre = p.nombre || 'Producto';
+  const precio = Number(p.precio_venta || p.precio || 0);
+  const stock = Number(p.stock || 0);
+  const codigo = p.sku || p.codigo || '';
+  const lineaStock = esServicio ? 'Servicio' : `SKU: ${codigo || '-'} · Stock: ${stock} u.`;
+
+  card.innerHTML = `
+    <div class="pos-item-title">${nombre}</div>
+    <div class="pos-item-price">$${precio.toLocaleString('es-CL')}</div>
+    <div class="pos-item-stock">${lineaStock}</div>
+  `;
+  card.onclick = () => abrirDetalleProducto(codigo);
+  return card;
+}
+
 function filtrarProductosPOS() {
   const contenedor = document.getElementById('pos-grid-productos');
   const buscarInput = document.getElementById('pos-buscar');
   if (!contenedor) return;
 
+  if (!document.getElementById('pos-filtros-categoria').innerHTML) renderizarFiltrosCategoriaPOS();
+
   const termino = buscarInput ? buscarInput.value.toLowerCase().trim() : "";
   contenedor.innerHTML = '';
 
-  const productosFiltrados = termino === ""
-    ? listaInventarioGlobal
-    : listaInventarioGlobal.filter(p => {
-        const nom = (p.nombre || '').toLowerCase();
-        const cod = (p.sku || p.codigo || '').toString().toLowerCase();
-        return nom.includes(termino) || cod.includes(termino);
-      });
+  let productosFiltrados = listaInventarioGlobal.filter(p => {
+    if (categoriaFiltroPOS !== 'Todos' && (p.categoria || 'Otros') !== categoriaFiltroPOS) return false;
+    if (termino === "") return true;
+    const nom = (p.nombre || '').toLowerCase();
+    const cod = (p.sku || p.codigo || '').toString().toLowerCase();
+    return nom.includes(termino) || cod.includes(termino);
+  });
 
-  if (productosFiltrados.length === 0) {
+  const servicios = productosFiltrados.filter(p => p.categoria === 'Servicios');
+  const productos = productosFiltrados.filter(p => p.categoria !== 'Servicios');
+  // Más vendidos primero (según Ventas_Detalle); los sin ventas registradas quedan al final, sin desordenarse entre sí.
+  productos.sort((a, b) => {
+    const ventasA = rankingVentasPorSKU[a.sku || a.codigo] || 0;
+    const ventasB = rankingVentasPorSKU[b.sku || b.codigo] || 0;
+    return ventasB - ventasA;
+  });
+
+  if (servicios.length === 0 && productos.length === 0) {
     contenedor.innerHTML = '<p style="color:#777; grid-column: 1/-1;">No se encontraron productos.</p>';
     return;
   }
 
-  productosFiltrados.forEach(p => {
-    const card = document.createElement('div');
-    card.className = 'pos-card-item';
-    const nombre = p.nombre || 'Producto';
-    const precio = Number(p.precio_venta || p.precio || 0);
-    const stock = Number(p.stock || 0);
-    const codigo = p.sku || p.codigo || '';
+  if (servicios.length > 0) {
+    const tituloServicios = document.createElement('p');
+    tituloServicios.style.cssText = 'grid-column:1/-1; font-size:0.8rem; color:#00695c; font-weight:600; margin:0 0 4px;';
+    tituloServicios.innerText = 'Servicios';
+    contenedor.appendChild(tituloServicios);
+    servicios.forEach(p => contenedor.appendChild(crearTarjetaProductoPOS(p, true)));
+  }
 
-    card.innerHTML = `
-      <div class="pos-item-title">${nombre}</div>
-      <div class="pos-item-price">$${precio.toLocaleString('es-CL')}</div>
-      <div class="pos-item-stock">SKU: ${codigo || '-'} · Stock: ${stock} u.</div>
-    `;
-
-    // Al hacer clic se abre la ficha del producto (no se agrega directo),
-    // para poder ver SKU, neto, IVA, precio y elegir cantidad.
-    card.onclick = () => abrirDetalleProducto(codigo);
-    contenedor.appendChild(card);
-  });
+  if (productos.length > 0) {
+    const tituloProductos = document.createElement('p');
+    tituloProductos.style.cssText = `grid-column:1/-1; font-size:0.8rem; color:#777; font-weight:600; margin:${servicios.length > 0 ? '10px' : '0'} 0 4px;`;
+    tituloProductos.innerText = 'Productos, ordenados por más vendidos';
+    contenedor.appendChild(tituloProductos);
+    productos.forEach(p => contenedor.appendChild(crearTarjetaProductoPOS(p, false)));
+  }
 }
 
 // Búsqueda por coincidencia EXACTA de SKU: la usan tanto el lector de
