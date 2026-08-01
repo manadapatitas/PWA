@@ -782,7 +782,7 @@ async function guardarPeluqueria(e) {
     tutor: selectTutor.options[selectTutor.selectedIndex].text,
     mascota: selectMascota.value,
     servicio: document.getElementById('pel-servicio').value,
-    monto: document.getElementById('pel-monto').value,
+    monto: obtenerValorNumerico('pel-monto'),
     observaciones: document.getElementById('pel-obs').value
   };
 
@@ -806,7 +806,7 @@ function configurarEventosDesgloseIVA() {
   const inputMargen = document.getElementById('inv-margen');
   const selectRedondeo = document.getElementById('inv-redondeo');
 
-  if (inputCosto) inputCosto.addEventListener('input', calcularPrecioVentaSugerido);
+  if (inputCosto) inputCosto.addEventListener('input', () => { formatearInputMiles(inputCosto); calcularPrecioVentaSugerido(); });
   if (inputMargen) inputMargen.addEventListener('input', calcularPrecioVentaSugerido);
   if (selectRedondeo) selectRedondeo.addEventListener('change', calcularPrecioVentaSugerido);
 }
@@ -860,7 +860,7 @@ function alCambiarCategoriaInventario() {
 }
 
 function calcularPrecioVentaSugerido() {
-  const costoNeto = parseFloat(document.getElementById('inv-costo').value) || 0;
+  const costoNeto = obtenerValorNumerico('inv-costo');
   const margenPct = parseFloat(document.getElementById('inv-margen').value) || 0;
   const precioInput = document.getElementById('inv-precio');
   const modoRedondeo = obtenerModoRedondeoSeleccionado();
@@ -964,7 +964,7 @@ async function guardarProducto(e) {
     codigo: document.getElementById('inv-codigo').value,
     nombre: document.getElementById('inv-nombre').value,
     categoria: document.getElementById('inv-categoria').value,
-    costo: document.getElementById('inv-costo').value,
+    costo: obtenerValorNumerico('inv-costo'),
     margen_pct: document.getElementById('inv-margen').value,
     stock: document.getElementById('inv-stock').value,
     stock_critico: 2,
@@ -1355,7 +1355,7 @@ function rellenarCodigoInventario(codigo) {
     document.getElementById('inv-nombre').value = productoExistente.nombre || '';
     document.getElementById('inv-categoria').value = productoExistente.categoria || 'Alimentos';
     alCambiarCategoriaInventario();
-    document.getElementById('inv-costo').value = productoExistente.costo || '';
+    document.getElementById('inv-costo').value = productoExistente.costo ? Number(productoExistente.costo).toLocaleString('es-CL') : '';
     document.getElementById('inv-margen').value = productoExistente.margen_pct || 30;
     const inputVencimiento = document.getElementById('inv-vencimiento');
     if (inputVencimiento) inputVencimiento.value = (productoExistente.fecha_vencimiento || '').toString().substring(0, 10);

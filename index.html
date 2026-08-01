@@ -228,7 +228,7 @@
             </div>
             <div class="form-group">
               <label>Valor Servicio ($)</label>
-              <input type="number" id="pel-monto" placeholder="Ej: 18000" required>
+              <input type="text" inputmode="numeric" id="pel-monto" placeholder="Ej: 18.000" oninput="formatearInputMiles(this)" required>
             </div>
           </div>
           <div class="form-group" style="margin-bottom: 15px;">
@@ -269,7 +269,7 @@
             </div>
             <div class="form-group">
               <label>Costo Neto/Compra ($)</label>
-              <input type="number" id="inv-costo" placeholder="Ej: 10000" required>
+              <input type="text" inputmode="numeric" id="inv-costo" placeholder="Ej: 10.000" required>
             </div>
             <div class="form-group">
               <label>Margen de Ganancia (%)</label>
