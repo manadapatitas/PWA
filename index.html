@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manada Patitas - Gestión Vet & Petshop</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=20260728">
+  <link rel="stylesheet" href="styles.css?v=20260801">
 </head>
 <body>
 
@@ -459,6 +459,8 @@
                 <th>Producto</th>
                 <th>Condición</th>
                 <th>Descuento</th>
+                <th>Precio final</th>
+                <th>Margen final</th>
                 <th></th>
               </tr>
             </thead>
@@ -680,6 +682,23 @@
     </div>
   </div>
 
+  <!-- MODAL: VENTA REGISTRADA (con botón para imprimir el comprobante interno) -->
+  <div id="modal-venta-registrada" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <h2>✅ Venta registrada</h2>
+      <div class="detalle-grid">
+        <div><strong>Total:</strong> <span id="venta-ok-total">$0</span></div>
+        <div><strong>Medio de pago:</strong> <span id="venta-ok-medio">-</span></div>
+        <div id="venta-ok-vuelto-wrap" class="hidden" style="grid-column: 1 / -1;"><strong>Vuelto entregado:</strong> <span id="venta-ok-vuelto">$0</span></div>
+      </div>
+      <p class="form-hint">El comprobante impreso es un documento interno, no reemplaza la boleta o factura que se emite desde TUU.</p>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button type="button" class="btn-secondary" style="flex:1;" onclick="cerrarModalVentaRegistrada()">Cerrar</button>
+        <button type="button" class="btn-primary" style="flex:1;" onclick="imprimirComprobanteVenta()">🖨️ Imprimir comprobante</button>
+      </div>
+    </div>
+  </div>
+
   <!--
     IMPORTANTE: cada vez que subas una nueva versión de app.js o styles.css a GitHub,
     cambia el número "?v=20260728" de sus <link>/<script> más abajo (por ejemplo a
@@ -693,6 +712,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- Librería para los gráficos del Dashboard -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
-  <script src="app.js?v=20260729"></script>
+  <script src="app.js?v=20260801"></script>
 </body>
 </html>

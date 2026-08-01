@@ -14,6 +14,14 @@ const CONFIG_ROLES = {
   caja:        { pestanaDefault: "agenda" }
 };
 
+// Datos del negocio para documentos impresos (recetas y comprobantes de
+// venta). Dirección y teléfono son los mismos que ya usa imprimirReceta().
+const NEGOCIO_NOMBRE = "Manada Patitas";
+const NEGOCIO_RUBRO = "Servicios veterinarios y venta de alimentos y accesorios";
+const NEGOCIO_DIRECCION = "Bernardo O'Higgins 363, Linares";
+const NEGOCIO_TELEFONO = "+56 9 9231 0119";
+const NEGOCIO_WEB = "www.manadapatitas.cl";
+
 let usuarioActual = null;
 let sessionToken = null;
 
@@ -27,6 +35,10 @@ let carritoPOS = [];
 let estadoCajaHoy = { abierta: false };
 let categoriaFiltroPOS = 'Todos';
 let rankingVentasPorSKU = {};
+
+// Guarda los datos de la última venta registrada, para poder imprimir el
+// comprobante (con botón, no automático) desde el modal de confirmación.
+let ultimaVentaParaImprimir = null;
 
 async function cargarRankingVentas() {
   try {
@@ -1844,9 +1856,33 @@ async function procesarVentaPOS() {
   }
 
   try {
-    await enviarFormularioBackend('guardarVenta', payload);
-    const mensajeVuelto = metodoPago === 'Efectivo' ? `\nVuelto entregado: $${payload.vuelto.toLocaleString('es-CL')}` : '';
-    alert(`💳 Venta realizada con éxito ($${totalCalculado.toLocaleString('es-CL')}).${mensajeVuelto}`);
+    const respuesta = await enviarFormularioBackend('guardarVenta', payload);
+
+    // Se guardan los datos completos (incluyendo precio original de catálogo,
+    // para poder mostrar el descuento tachado en el comprobante impreso) antes
+    // de vaciar el carrito.
+    ultimaVentaParaImprimir = {
+      idVenta: respuesta.id_venta || '-',
+      fecha: new Date(),
+      cajero: usuarioActual ? usuarioActual.nombre : '-',
+      metodoPago: metodoPago,
+      items: carritoPOS.map(i => {
+        const precioEfectivo = calcularPrecioEfectivoItem(i, carritoPOS);
+        return {
+          nombre: i.nombre,
+          cantidad: i.cantidad,
+          precioOriginal: i.precio,
+          precioEfectivo: precioEfectivo,
+          subtotal: precioEfectivo * i.cantidad
+        };
+      }),
+      total: totalCalculado,
+      montoEntregado: metodoPago === 'Efectivo' ? payload.monto_entregado : null,
+      vuelto: metodoPago === 'Efectivo' ? payload.vuelto : null
+    };
+
+    mostrarModalVentaRegistrada(ultimaVentaParaImprimir);
+
     carritoPOS = [];
     renderizarCarritoPOS();
     const inputEntregado = document.getElementById('pos-monto-entregado');
@@ -1856,6 +1892,123 @@ async function procesarVentaPOS() {
   } catch (err) {
     alert("Error procesando venta: " + err.message);
   }
+}
+
+// -----------------------------------------------------------------
+// MODAL DE VENTA REGISTRADA + IMPRESIÓN DE COMPROBANTE (80mm / 72mm)
+// -----------------------------------------------------------------
+function mostrarModalVentaRegistrada(venta) {
+  document.getElementById('venta-ok-total').innerText = formatearMoneda(venta.total);
+  document.getElementById('venta-ok-medio').innerText = venta.metodoPago;
+
+  const wrapVuelto = document.getElementById('venta-ok-vuelto-wrap');
+  if (venta.metodoPago === 'Efectivo' && wrapVuelto) {
+    document.getElementById('venta-ok-vuelto').innerText = formatearMoneda(venta.vuelto);
+    wrapVuelto.classList.remove('hidden');
+  } else if (wrapVuelto) {
+    wrapVuelto.classList.add('hidden');
+  }
+
+  const modal = document.getElementById('modal-venta-registrada');
+  if (modal) modal.style.display = 'flex';
+}
+
+function cerrarModalVentaRegistrada() {
+  const modal = document.getElementById('modal-venta-registrada');
+  if (modal) modal.style.display = 'none';
+  ultimaVentaParaImprimir = null;
+}
+
+// Imprime el comprobante interno de la última venta (NO es una boleta ni
+// factura: ese documento tributario lo emite el dispositivo TUU aparte).
+// Sigue el mismo patrón que imprimirReceta(): ventana nueva + print().
+function imprimirComprobanteVenta() {
+  const venta = ultimaVentaParaImprimir;
+  if (!venta) return;
+
+  const ventana = window.open('', '_blank', 'width=400,height=700');
+  if (!ventana) {
+    alert('El navegador bloqueó la ventana de impresión. Habilita las ventanas emergentes para este sitio e inténtalo de nuevo.');
+    return;
+  }
+
+  const fechaTexto = venta.fecha.toLocaleDateString('es-CL') + ' ' +
+    venta.fecha.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+
+  const totalDescuentos = venta.items.reduce((sum, it) =>
+    sum + (it.precioOriginal - it.precioEfectivo) * it.cantidad, 0);
+
+  const filasItems = venta.items.map(it => {
+    const tieneDescuento = it.precioEfectivo < it.precioOriginal;
+    const lineaCombo = tieneDescuento
+      ? `<div class="linea-combo">Descuento: <span class="tachado">$${(it.precioOriginal * it.cantidad).toLocaleString('es-CL')}</span></div>`
+      : '';
+    return `
+      <div class="item-fila">
+        <span>${it.cantidad}x ${it.nombre}</span>
+        <span>$${it.subtotal.toLocaleString('es-CL')}</span>
+      </div>
+      ${lineaCombo}
+    `;
+  }).join('');
+
+  const filaDescuentos = totalDescuentos > 0
+    ? `<div class="resumen-fila secundario"><span>Descuentos</span><span>-$${totalDescuentos.toLocaleString('es-CL')}</span></div>`
+    : '';
+
+  const filasEfectivo = venta.metodoPago === 'Efectivo'
+    ? `
+      <div class="resumen-fila secundario"><span>Recibido</span><span>$${Number(venta.montoEntregado || 0).toLocaleString('es-CL')}</span></div>
+      <div class="resumen-fila secundario"><span>Vuelto</span><span>$${Number(venta.vuelto || 0).toLocaleString('es-CL')}</span></div>
+    `
+    : '';
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>Comprobante ${venta.idVenta}</title>
+    <style>
+      @page { size: 72mm auto; margin: 2mm; }
+      * { box-sizing: border-box; }
+      body { font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 1.5; color: #000; width: 72mm; margin: 0 auto; padding: 2mm; }
+      .centrado { text-align: center; }
+      .nombre-negocio { font-size: 15px; font-weight: bold; letter-spacing: 0.5px; }
+      .gris { color: #444; }
+      .separador { border-top: 1px dashed #000; margin: 6px 0; }
+      .fila { display: flex; justify-content: space-between; }
+      .item-fila { display: flex; justify-content: space-between; margin-top: 4px; }
+      .linea-combo { color: #444; padding-left: 6px; font-size: 10px; }
+      .tachado { text-decoration: line-through; }
+      .resumen-fila { display: flex; justify-content: space-between; margin-top: 3px; }
+      .resumen-fila.secundario { color: #444; }
+      .total-fila { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; }
+      .aviso-no-tributario { text-align: center; font-weight: bold; margin: 8px 0; }
+      .gracias { text-align: center; margin-top: 8px; }
+    </style></head><body>
+    <div class="centrado">
+      <div class="nombre-negocio">${NEGOCIO_NOMBRE.toUpperCase()}</div>
+      <div class="gris">${NEGOCIO_RUBRO}</div>
+      <div class="gris">${NEGOCIO_DIRECCION}</div>
+      <div class="gris">${NEGOCIO_TELEFONO}</div>
+    </div>
+    <div class="separador"></div>
+    <div class="fila"><span>Venta N</span><span>${venta.idVenta}</span></div>
+    <div class="fila"><span>Fecha</span><span>${fechaTexto}</span></div>
+    <div class="fila"><span>Cajero</span><span>${venta.cajero}</span></div>
+    <div class="separador"></div>
+    ${filasItems}
+    <div class="separador"></div>
+    ${filaDescuentos}
+    <div class="total-fila"><span>TOTAL</span><span>$${venta.total.toLocaleString('es-CL')}</span></div>
+    <div class="resumen-fila secundario"><span>Medio de pago</span><span>${venta.metodoPago}</span></div>
+    ${filasEfectivo}
+    <div class="separador"></div>
+    <div class="aviso-no-tributario">Comprobante interno<br>no válido como boleta ni factura</div>
+    <div class="separador"></div>
+    <div class="gracias">Gracias por tu compra<br>y por cuidar a tu mascota con nosotros<br>${NEGOCIO_WEB}</div>
+    </body></html>`;
+
+  ventana.document.write(html);
+  ventana.document.close();
+  ventana.onload = () => { ventana.focus(); ventana.print(); };
 }
 
 // -----------------------------------------------------------------
@@ -1906,18 +2059,38 @@ function renderizarTablaDescuentos() {
   const activos = listaDescuentosGlobal.filter(d => (d.activo || '').toLowerCase() !== 'no');
 
   if (activos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">No hay descuentos activos.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">No hay descuentos activos.</td></tr>';
     return;
   }
 
   tbody.innerHTML = activos.map(d => {
     const condicion = d.sku_principal ? `Combo con: ${d.nombre_principal}` : 'Sin condición (unitario)';
     const valorTexto = d.tipo_valor === 'Porcentaje' ? `${d.valor}%` : `$${Number(d.valor).toLocaleString('es-CL')}`;
+
+    // Precio y margen final: se calculan aquí igual que en la vista previa,
+    // buscando el producto en el inventario actual (no quedan guardados fijos
+    // en el descuento, para que reflejen siempre el precio/costo vigente).
+    const producto = listaInventarioGlobal.find(p => (p.sku || p.codigo) === d.sku_producto);
+    let precioFinalTexto = '—';
+    let margenTexto = '—';
+    let colorMargen = '#333';
+    if (producto) {
+      const precioOriginal = Number(producto.precio_venta || producto.precio || 0);
+      const costo = Number(producto.costo || 0);
+      const precioFinal = calcularPrecioConValorDescuento(precioOriginal, d.tipo_valor, Number(d.valor));
+      const margen = precioFinal - costo;
+      colorMargen = margen >= 0 ? '#2e7d32' : '#c62828';
+      precioFinalTexto = `$${precioFinal.toLocaleString('es-CL')}`;
+      margenTexto = `$${margen.toLocaleString('es-CL')}${margen < 0 ? ' (pérdida)' : ''}`;
+    }
+
     return `
       <tr>
         <td>${d.nombre_producto}</td>
         <td>${condicion}</td>
         <td>${valorTexto}</td>
+        <td>${precioFinalTexto}</td>
+        <td style="color:${colorMargen}; font-weight:600;">${margenTexto}</td>
         <td><button class="btn-danger" style="padding:4px 10px; font-size:0.8rem;" onclick="eliminarDescuentoClick('${d.id_descuento}')">Eliminar</button></td>
       </tr>
     `;
@@ -2067,7 +2240,10 @@ function actualizarBannerCombo() {
 
   banner.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-      <span>💡 ¿Agregar <strong>${sugerencia.nombre_producto}</strong> con descuento? Combo: <strong>$${precioConDescuento.toLocaleString('es-CL')}</strong> en vez de $${precioOriginal.toLocaleString('es-CL')}.</span>
+      <span>
+        🏷️ <strong>Promoción activa</strong><br>
+        Por la compra de "${sugerencia.nombre_principal}", ¿agregar <strong>${sugerencia.nombre_producto}</strong> con descuento? Combo: <strong>$${precioConDescuento.toLocaleString('es-CL')}</strong> en vez de $${precioOriginal.toLocaleString('es-CL')}.
+      </span>
       <button type="button" class="btn-primary" style="padding:6px 14px; font-size:0.85rem; white-space:nowrap;" onclick="agregarSugerenciaCombo('${sugerencia.sku_producto}')">✅ Sí, agregar</button>
     </div>
   `;
@@ -2075,7 +2251,11 @@ function actualizarBannerCombo() {
 }
 
 function agregarSugerenciaCombo(skuProducto) {
-  const producto = listaInventarioGlobal.find(p => (p.sku || p.codigo) === skuProducto);
+  // Comparación con .toString() en ambos lados: el SKU puede llegar como
+  // número desde Google Sheets, pero el botón del banner siempre lo pasa
+  // como texto (viene de un atributo HTML). Sin esto, la comparación
+  // estricta fallaba silenciosamente y el botón no hacía nada.
+  const producto = listaInventarioGlobal.find(p => (p.sku || p.codigo || '').toString() === skuProducto.toString());
   if (!producto) return;
   agregarAlCarrito(producto.sku || producto.codigo, producto.nombre, Number(producto.precio_venta || producto.precio || 0), Number(producto.stock || 0), 1);
 }
