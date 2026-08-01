@@ -1141,7 +1141,7 @@ function filtrarProductosPOS() {
   const buscarInput = document.getElementById('pos-buscar');
   if (!contenedor) return;
 
-  if (!document.getElementById('pos-filtros-categoria').innerHTML) renderizarFiltrosCategoriaPOS();
+  renderizarFiltrosCategoriaPOS();
 
   const termino = buscarInput ? buscarInput.value.toLowerCase().trim() : "";
   contenedor.innerHTML = '';
