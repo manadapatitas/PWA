@@ -123,7 +123,7 @@
             </div>
             <div class="form-group">
               <label>Teléfono Contacto</label>
-              <input type="tel" id="tut-telefono" placeholder="Ej: +56 9 1234 5678" required>
+              <input type="tel" id="tut-telefono" placeholder="Ej: +56 9 1234 5678" oninput="formatearTelefonoChile(this)" required>
             </div>
             <div class="form-group">
               <label>Nombre Mascota</label>
@@ -259,11 +259,12 @@
             </div>
             <div class="form-group">
               <label>Categoría</label>
-              <select id="inv-categoria">
+              <select id="inv-categoria" onchange="alCambiarCategoriaInventario()">
                 <option value="Alimentos">Alimentos</option>
                 <option value="Farmacia">Farmacia / Medicamentos</option>
                 <option value="Accesorios">Accesorios y Juguetes</option>
                 <option value="Estética">Snacks y Premios</option>
+                <option value="Servicios">Servicios</option>
               </select>
             </div>
             <div class="form-group">
@@ -286,11 +287,11 @@
                 <option value="ninguno">Sin redondeo (valor exacto)</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="grupo-inv-stock">
               <label>Stock a Ingresar</label>
               <input type="number" id="inv-stock" placeholder="Ej: 10" required>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="grupo-inv-vencimiento">
               <label>Fecha de Vencimiento (opcional)</label>
               <input type="date" id="inv-vencimiento" title="Relevante sobre todo para Alimentos y Farmacia">
             </div>
@@ -390,7 +391,7 @@
 
             <div class="form-group" id="grupo-efectivo-pos" style="margin-top: 10px;">
               <label>Monto entregado por el cliente:</label>
-              <input type="number" id="pos-monto-entregado" min="0" step="1" placeholder="$0" oninput="actualizarVueltoPOS()">
+              <input type="text" inputmode="numeric" id="pos-monto-entregado" placeholder="$0" oninput="formatearInputMiles(this); actualizarVueltoPOS();">
               <div class="form-hint" id="pos-vuelto-texto">Vuelto a entregar: $0</div>
             </div>
 
@@ -584,7 +585,7 @@
       <h2>🔓 Abrir Caja</h2>
       <div class="form-group" style="margin-top: 10px;">
         <label>Monto en efectivo con el que inicia la caja hoy:</label>
-        <input type="number" id="input-monto-apertura" min="0" step="1" placeholder="$0">
+        <input type="text" inputmode="numeric" id="input-monto-apertura" placeholder="$0" oninput="formatearInputMiles(this)">
       </div>
       <div style="display:flex; gap:10px; margin-top:15px;">
         <button type="button" class="btn-secondary" style="flex:1;" onclick="ocultarModalAperturaCaja()">Cancelar</button>
@@ -604,7 +605,7 @@
       </div>
       <div class="form-group" style="margin-top: 10px;">
         <label>Monto contado físicamente en caja:</label>
-        <input type="number" id="input-monto-contado" min="0" step="1" placeholder="$0" oninput="actualizarDiferenciaCierre()">
+        <input type="text" inputmode="numeric" id="input-monto-contado" placeholder="$0" oninput="formatearInputMiles(this); actualizarDiferenciaCierre();">
         <div class="form-hint" id="cierre-diferencia-texto">Diferencia: $0</div>
       </div>
       <div style="display:flex; gap:10px; margin-top:15px;">
