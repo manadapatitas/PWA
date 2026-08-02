@@ -40,6 +40,22 @@ let rankingVentasPorSKU = {};
 // comprobante (con botón, no automático) desde el modal de confirmación.
 let ultimaVentaParaImprimir = null;
 
+// Clave de idempotencia de la venta que se está intentando cobrar en este
+// momento. Se genera una sola vez por carrito y se REUTILIZA en cualquier
+// reintento (si el cajero vuelve a presionar "Finalizar Venta" porque la
+// respuesta anterior llegó con error, aunque la venta ya se haya guardado
+// en el servidor). El backend usa esta misma clave para detectar y evitar
+// ventas duplicadas. Se limpia al cancelar la venta o al confirmarse con
+// éxito -- ver cancelarVentaPOS() y procesarVentaPOS().
+let idempotencyKeyVentaActual = null;
+
+function obtenerIdempotencyKeyVenta() {
+  if (!idempotencyKeyVentaActual) {
+    idempotencyKeyVentaActual = 'IDEMP-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  }
+  return idempotencyKeyVentaActual;
+}
+
 async function cargarRankingVentas() {
   try {
     const json = await enviarFormularioBackend('obtenerRankingVentas', {});
@@ -1755,11 +1771,15 @@ async function confirmarAperturaCaja() {
   try {
     const json = await enviarFormularioBackend('abrirCaja', { monto_apertura: monto });
     alert('✅ ' + json.message);
-    ocultarModalAperturaCaja();
-    await cargarEstadoCaja();
   } catch (err) {
-    alert('Error al abrir caja: ' + err.message);
+    alert('Error al abrir caja: ' + err.message + '\n\nVoy a verificar el estado real de la caja por si la acción sí se procesó en el servidor.');
   } finally {
+    // Se revisa el estado real SIEMPRE, tenga éxito o error la petición: si la
+    // respuesta llegó mal formada pero la caja sí quedó abierta en el
+    // servidor (puede pasar cuando Apps Script está lento/con carga), esto
+    // corrige la pantalla sola en vez de dejarla desactualizada hasta un F5.
+    await cargarEstadoCaja();
+    if (estadoCajaHoy.abierta) ocultarModalAperturaCaja();
     if (btn) { btn.disabled = false; btn.innerText = 'Abrir Caja'; }
   }
 }
@@ -1817,11 +1837,13 @@ async function confirmarCierreCaja() {
   try {
     const json = await enviarFormularioBackend('cerrarCaja', { monto_contado: contado });
     alert(`✅ Caja cerrada.\nEsperado: ${formatearMoneda(json.monto_esperado)}\nContado: ${formatearMoneda(json.monto_contado)}\nDiferencia: ${formatearMoneda(json.diferencia)}`);
-    ocultarModalCierreCaja();
-    await cargarEstadoCaja();
   } catch (err) {
-    alert('Error al cerrar caja: ' + err.message);
+    alert('Error al cerrar caja: ' + err.message + '\n\nVoy a verificar el estado real de la caja por si la acción sí se procesó en el servidor.');
   } finally {
+    // Mismo resguardo que en confirmarAperturaCaja(): siempre se revisa el
+    // estado real, tenga éxito o error la petición.
+    await cargarEstadoCaja();
+    if (!estadoCajaHoy.abierta) ocultarModalCierreCaja();
     if (btn) { btn.disabled = false; btn.innerText = 'Cerrar Caja'; }
   }
 }
@@ -1873,6 +1895,7 @@ function cancelarVentaPOS() {
   const inputEntregado = document.getElementById('pos-monto-entregado');
   if (inputEntregado) inputEntregado.value = '';
   actualizarVueltoPOS();
+  idempotencyKeyVentaActual = null;
 }
 
 async function procesarVentaPOS() {
@@ -1891,7 +1914,8 @@ async function procesarVentaPOS() {
   const payload = {
     metodo_pago: metodoPago,
     total: totalCalculado,
-    items: itemsConDescuento
+    items: itemsConDescuento,
+    idempotency_key: obtenerIdempotencyKeyVenta()
   };
 
   if (metodoPago === 'Efectivo') {
@@ -1938,6 +1962,7 @@ async function procesarVentaPOS() {
 
     mostrarModalVentaRegistrada(ultimaVentaParaImprimir);
 
+    idempotencyKeyVentaActual = null;
     carritoPOS = [];
     renderizarCarritoPOS();
     const inputEntregado = document.getElementById('pos-monto-entregado');
@@ -1945,7 +1970,7 @@ async function procesarVentaPOS() {
     actualizarVueltoPOS();
     actualizarDatosLocales(respuesta);
   } catch (err) {
-    alert("Error procesando venta: " + err.message);
+    alert("Error procesando venta: " + err.message + "\n\nSi vuelves a presionar \"Finalizar Venta\" sin cambiar el carrito, es seguro: no se registrará ni cobrará dos veces la misma venta.");
   } finally {
     desbloquearBoton(boton, textoOriginal);
   }
