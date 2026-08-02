@@ -56,15 +56,6 @@ function obtenerIdempotencyKeyVenta() {
   return idempotencyKeyVentaActual;
 }
 
-async function cargarRankingVentas() {
-  try {
-    const json = await enviarFormularioBackend('obtenerRankingVentas', {});
-    rankingVentasPorSKU = json.ranking || {};
-  } catch (err) {
-    rankingVentasPorSKU = {}; // si falla, la grilla igual funciona, solo sin orden por más vendidos
-  }
-}
-
 // Estado del Dashboard (solo Administrador)
 let datosDashboard = null;
 let chartMasVendidos = null;
@@ -295,8 +286,7 @@ function cambiarPestana(idPestana) {
     renderizarTablaInventario();
   } else if (idPestana === 'caja') {
     renderizarPOS();
-    cargarEstadoCaja();
-    cargarRankingVentas().then(() => filtrarProductosPOS());
+    cargarDatosPOS();
   } else if (idPestana === 'descuentos') {
     renderizarDescuentos();
   } else if (idPestana === 'dashboard') {
@@ -408,6 +398,7 @@ const ACCIONES_SEGURAS_PARA_REINTENTAR = new Set([
   'obtenerTodo',
   'obtenerEstadoCaja',
   'obtenerRankingVentas',
+  'obtenerDatosPOS',
   'obtenerDashboard',
   'obtenerConciliacionSII',
   'obtenerCatalogoPublico',
@@ -1791,28 +1782,55 @@ function modificarCantidadCarrito(index, cambio) {
 // APERTURA / CIERRE DE CAJA
 // -----------------------------------------------------------------
 
-async function cargarEstadoCaja() {
+// Pinta en pantalla un objeto de estado de caja (lo reutilizan tanto
+// cargarEstadoCaja() como cargarDatosPOS()).
+function renderizarEstadoCajaUI(estado) {
   const textoEstado = document.getElementById('texto-estado-caja');
   const btnAbrir = document.getElementById('btn-abrir-caja');
   const btnCerrar = document.getElementById('btn-cerrar-caja');
   if (!textoEstado) return;
 
+  if (estado.abierta) {
+    textoEstado.innerHTML = `🔓 Caja abierta desde las <strong>${estado.hora_apertura}</strong> por <strong>${estado.usuario_apertura}</strong> — Apertura: <strong>${formatearMoneda(estado.monto_apertura)}</strong>`;
+    btnAbrir.classList.add('hidden');
+    btnCerrar.classList.remove('hidden');
+  } else {
+    textoEstado.innerHTML = '🔒 La caja no ha sido abierta hoy.';
+    btnAbrir.classList.remove('hidden');
+    btnCerrar.classList.add('hidden');
+  }
+}
+
+async function cargarEstadoCaja() {
+  const textoEstado = document.getElementById('texto-estado-caja');
+  if (!textoEstado) return;
+
   try {
     const json = await enviarFormularioBackend('obtenerEstadoCaja', {});
     estadoCajaHoy = json;
-
-    if (json.abierta) {
-      textoEstado.innerHTML = `🔓 Caja abierta desde las <strong>${json.hora_apertura}</strong> por <strong>${json.usuario_apertura}</strong> — Apertura: <strong>${formatearMoneda(json.monto_apertura)}</strong>`;
-      btnAbrir.classList.add('hidden');
-      btnCerrar.classList.remove('hidden');
-    } else {
-      textoEstado.innerHTML = '🔒 La caja no ha sido abierta hoy.';
-      btnAbrir.classList.remove('hidden');
-      btnCerrar.classList.add('hidden');
-    }
+    renderizarEstadoCajaUI(json);
   } catch (err) {
     textoEstado.innerText = 'No se pudo consultar el estado de la caja.';
   }
+}
+
+// Junta estado de caja + ranking de ventas en UNA sola llamada al backend
+// (antes eran 2 llamadas simultáneas). Se usa específicamente al abrir la
+// pestaña POS/Caja, para que ambas consultas no compitan por el mismo cupo
+// de ejecuciones concurrentes de Apps Script -- lo mismo que se busca
+// evitar más adelante con la comunicación al dispositivo TUU.
+async function cargarDatosPOS() {
+  const textoEstado = document.getElementById('texto-estado-caja');
+  try {
+    const json = await enviarFormularioBackend('obtenerDatosPOS', {});
+    estadoCajaHoy = json.caja || { abierta: false };
+    rankingVentasPorSKU = json.ranking || {};
+    renderizarEstadoCajaUI(estadoCajaHoy);
+  } catch (err) {
+    rankingVentasPorSKU = {}; // si falla, la grilla igual funciona, solo sin orden por más vendidos
+    if (textoEstado) textoEstado.innerText = 'No se pudo consultar el estado de la caja.';
+  }
+  filtrarProductosPOS();
 }
 
 function mostrarModalAperturaCaja() {
