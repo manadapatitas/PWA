@@ -254,7 +254,7 @@ function cambiarPestana(idPestana) {
 
   // El Dashboard y Descuentos son exclusivos de Administrador: refuerzo en el
   // frontend además del bloqueo real que ya existe en el backend (tienePermiso en codigo.gs).
-  if ((idPestana === 'dashboard' || idPestana === 'descuentos') && usuarioActual.rol !== 'admin') {
+  if ((idPestana === 'dashboard' || idPestana === 'descuentos' || idPestana === 'conciliacion') && usuarioActual.rol !== 'admin') {
     alert('Esta sección es exclusiva del perfil Administrador.');
     return;
   }
@@ -292,6 +292,9 @@ function cambiarPestana(idPestana) {
   } else if (idPestana === 'dashboard') {
     const selectPeriodo = document.getElementById('dashboard-filtro-periodo');
     cargarDashboard(selectPeriodo ? selectPeriodo.value : 30);
+  } else if (idPestana === 'conciliacion') {
+    const selectDias = document.getElementById('conciliacion-filtro-dias');
+    cargarConciliacionSII(selectDias ? selectDias.value : 30);
   }
 }
 
@@ -401,6 +404,7 @@ const ACCIONES_SEGURAS_PARA_REINTENTAR = new Set([
   'obtenerDatosPOS',
   'obtenerDashboard',
   'obtenerConciliacionSII',
+  'actualizarDocumentoSII',
   'obtenerCatalogoPublico',
   'obtenerAgendaPublicaDia',
   'guardarVenta'
@@ -1937,6 +1941,18 @@ async function confirmarCierreCaja() {
 // PAGO EN EFECTIVO: monto entregado y vuelto
 // -----------------------------------------------------------------
 
+function alCambiarTipoDocumentoPOS() {
+  const tipo = document.getElementById('pos-tipo-documento').value;
+  const grupo = document.getElementById('grupo-factura-pos');
+  if (!grupo) return;
+
+  if (tipo === 'Factura') {
+    grupo.classList.remove('hidden');
+  } else {
+    grupo.classList.add('hidden');
+  }
+}
+
 function alCambiarMetodoPagoPOS() {
   const metodo = document.getElementById('pos-metodo-pago').value;
   const grupo = document.getElementById('grupo-efectivo-pos');
@@ -1981,6 +1997,20 @@ function cancelarVentaPOS() {
   if (inputEntregado) inputEntregado.value = '';
   actualizarVueltoPOS();
   idempotencyKeyVentaActual = null;
+  resetearFormularioDocumentoPOS();
+}
+
+function resetearFormularioDocumentoPOS() {
+  const selectTipo = document.getElementById('pos-tipo-documento');
+  if (selectTipo) selectTipo.value = 'Boleta';
+  const grupo = document.getElementById('grupo-factura-pos');
+  if (grupo) grupo.classList.add('hidden');
+  const campoRut = document.getElementById('pos-factura-rut');
+  const campoRazon = document.getElementById('pos-factura-razon-social');
+  const campoGiro = document.getElementById('pos-factura-giro');
+  if (campoRut) campoRut.value = '';
+  if (campoRazon) campoRazon.value = '';
+  if (campoGiro) campoGiro.value = '';
 }
 
 async function procesarVentaPOS() {
@@ -1990,6 +2020,7 @@ async function procesarVentaPOS() {
   }
 
   const metodoPago = document.getElementById('pos-metodo-pago').value;
+  const tipoDocumento = document.getElementById('pos-tipo-documento').value;
   // Los ítems se envían con el precio EFECTIVO (ya con descuento aplicado si corresponde),
   // no el precio de catálogo — así el registro en Ventas_Detalle y el margen quedan
   // consistentes con lo que realmente se cobró.
@@ -1998,10 +2029,24 @@ async function procesarVentaPOS() {
 
   const payload = {
     metodo_pago: metodoPago,
+    tipo_documento: tipoDocumento,
     total: totalCalculado,
     items: itemsConDescuento,
     idempotency_key: obtenerIdempotencyKeyVenta()
   };
+
+  if (tipoDocumento === 'Factura') {
+    const rutEmpresa = document.getElementById('pos-factura-rut').value.trim();
+    const razonSocial = document.getElementById('pos-factura-razon-social').value.trim();
+    const giro = document.getElementById('pos-factura-giro').value.trim();
+    if (!rutEmpresa || !razonSocial || !giro) {
+      alert('Para Factura debes completar RUT empresa, Razón Social y Giro.');
+      return;
+    }
+    payload.rut_tutor = rutEmpresa; // reutiliza la columna RUT_Tutor de Ventas_Caja como RUT del cliente/empresa
+    payload.razon_social = razonSocial;
+    payload.giro = giro;
+  }
 
   if (metodoPago === 'Efectivo') {
     if (!estadoCajaHoy.abierta) {
@@ -2042,7 +2087,13 @@ async function procesarVentaPOS() {
       }),
       total: totalCalculado,
       montoEntregado: metodoPago === 'Efectivo' ? payload.monto_entregado : null,
-      vuelto: metodoPago === 'Efectivo' ? payload.vuelto : null
+      vuelto: metodoPago === 'Efectivo' ? payload.vuelto : null,
+      tipoDocumento: tipoDocumento,
+      facturaPendiente: tipoDocumento === 'Factura' ? {
+        rut: payload.rut_tutor,
+        razonSocial: payload.razon_social,
+        giro: payload.giro
+      } : null
     };
 
     mostrarModalVentaRegistrada(ultimaVentaParaImprimir);
@@ -2053,6 +2104,7 @@ async function procesarVentaPOS() {
     const inputEntregado = document.getElementById('pos-monto-entregado');
     if (inputEntregado) inputEntregado.value = '';
     actualizarVueltoPOS();
+    resetearFormularioDocumentoPOS();
     actualizarDatosLocales(respuesta);
   } catch (err) {
     alert("Error procesando venta: " + err.message + "\n\nSi vuelves a presionar \"Finalizar Venta\" sin cambiar el carrito, es seguro: no se registrará ni cobrará dos veces la misma venta.");
@@ -2130,6 +2182,16 @@ function imprimirComprobanteVenta() {
     `
     : '';
 
+  const bloqueFactura = venta.facturaPendiente
+    ? `
+      <div class="separador"></div>
+      <div class="aviso-no-tributario">Factura pendiente de emitir</div>
+      <div class="resumen-fila secundario"><span>RUT</span><span>${venta.facturaPendiente.rut}</span></div>
+      <div class="resumen-fila secundario"><span>Razón Social</span><span>${venta.facturaPendiente.razonSocial}</span></div>
+      <div class="resumen-fila secundario"><span>Giro</span><span>${venta.facturaPendiente.giro}</span></div>
+    `
+    : '';
+
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
     <title>Comprobante ${venta.idVenta}</title>
     <style>
@@ -2169,6 +2231,7 @@ function imprimirComprobanteVenta() {
     <div class="total-fila"><span>TOTAL</span><span>$${venta.total.toLocaleString('es-CL')}</span></div>
     <div class="resumen-fila secundario"><span>Medio de pago</span><span>${venta.metodoPago}</span></div>
     ${filasEfectivo}
+    ${bloqueFactura}
     <div class="separador"></div>
     <div class="aviso-no-tributario">Comprobante interno<br>no válido como boleta ni factura</div>
     <div class="separador"></div>
@@ -2183,6 +2246,67 @@ function imprimirComprobanteVenta() {
 // -----------------------------------------------------------------
 // DASHBOARD DE NEGOCIO (solo Administrador)
 // -----------------------------------------------------------------
+// -----------------------------------------------------------------
+// CONCILIACIÓN SII (solo Admin): enlaza cada venta con su boleta/factura
+// real emitida por TUU, requisito para poder emitir notas de crédito o
+// devoluciones sobre una venta específica más adelante.
+// -----------------------------------------------------------------
+async function cargarConciliacionSII(dias) {
+  const tbody = document.getElementById('conciliacion-tabla-body');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#777;">Cargando...</td></tr>';
+
+  try {
+    const json = await enviarFormularioBackend('obtenerConciliacionSII', { dias: dias });
+    const totalVentasEl = document.getElementById('conciliacion-total-ventas');
+    const totalPendientesEl = document.getElementById('conciliacion-total-pendientes');
+    if (totalVentasEl) totalVentasEl.innerText = json.totalVentas;
+    if (totalPendientesEl) totalPendientesEl.innerText = json.totalPendientes;
+    renderizarTablaConciliacion(json.pendientes || []);
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#c62828;">Error al cargar: ${err.message}</td></tr>`;
+  }
+}
+
+function renderizarTablaConciliacion(pendientes) {
+  const tbody = document.getElementById('conciliacion-tabla-body');
+  if (!tbody) return;
+
+  if (pendientes.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#2e7d32;">✅ No hay ventas pendientes de conciliar en este rango.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = pendientes.map(v => `
+    <tr>
+      <td>${formatearFechaCorta(v.fecha)}</td>
+      <td>${v.idVenta}</td>
+      <td>${v.tipoDocumento}</td>
+      <td>${formatearMoneda(v.total)}</td>
+      <td>${v.medioPago}</td>
+      <td>${v.usuarioCaja}</td>
+      <td><input type="text" id="doc-sii-${v.idVenta}" placeholder="Ej: 12345" style="width: 110px;"></td>
+      <td><button class="btn-primary" style="padding: 6px 12px; font-size: 0.85rem; white-space: nowrap;" onclick="guardarDocumentoSIIClick('${v.idVenta}')">Guardar</button></td>
+    </tr>
+  `).join('');
+}
+
+async function guardarDocumentoSIIClick(idVenta) {
+  const input = document.getElementById(`doc-sii-${idVenta}`);
+  const valor = input ? input.value.trim() : '';
+  if (!valor) {
+    alert('Ingresa el número de documento SII antes de guardar.');
+    return;
+  }
+
+  try {
+    await enviarFormularioBackend('actualizarDocumentoSII', { id_venta: idVenta, nro_documento_sii: valor });
+    const selectDias = document.getElementById('conciliacion-filtro-dias');
+    cargarConciliacionSII(selectDias ? selectDias.value : 30);
+  } catch (err) {
+    alert('Error al guardar: ' + err.message);
+  }
+}
+
 async function cargarDashboard(dias = 30) {
   if (!usuarioActual || usuarioActual.rol !== 'admin') return;
 

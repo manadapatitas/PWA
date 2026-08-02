@@ -42,6 +42,11 @@ body:not(.rol-admin) #nav-btn-descuentos {
   display: none !important;
 }
 
+/* La Conciliación SII es exclusiva del rol Administrador */
+body:not(.rol-admin) #nav-btn-conciliacion {
+  display: none !important;
+}
+
 /* ENCABEZADO Y LOGO */
 .app-header {
   background-color: #008080;

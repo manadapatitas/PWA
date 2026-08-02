@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manada Patitas - Gestión Vet & Petshop</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=20260803">
+  <link rel="stylesheet" href="styles.css?v=20260809">
 </head>
 <body>
 
@@ -57,6 +57,7 @@
       <button id="nav-btn-inventario" class="tab-btn" onclick="cambiarPestana('inventario')">📦 Inventario</button>
       <button id="nav-btn-caja" class="tab-btn" onclick="cambiarPestana('caja')">💳 POS / Caja</button>
       <button id="nav-btn-descuentos" class="tab-btn" onclick="cambiarPestana('descuentos')">💸 Descuentos</button>
+      <button id="nav-btn-conciliacion" class="tab-btn" onclick="cambiarPestana('conciliacion')">🧮 Conciliación SII</button>
       <button id="nav-btn-dashboard" class="tab-btn" onclick="cambiarPestana('dashboard')">📊 Dashboard</button>
     </nav>
 
@@ -384,6 +385,24 @@
             </div>
 
             <div class="form-group" style="margin-top: 10px;">
+              <label>Tipo de documento:</label>
+              <select id="pos-tipo-documento" onchange="alCambiarTipoDocumentoPOS()">
+                <option value="Boleta">🧾 Boleta</option>
+                <option value="Factura">📄 Factura</option>
+              </select>
+            </div>
+
+            <div class="form-group hidden" id="grupo-factura-pos" style="margin-top: 10px;">
+              <label>RUT Empresa:</label>
+              <input type="text" id="pos-factura-rut" placeholder="Ej: 76.123.456-7" oninput="formatearInputRut(this)">
+              <label style="margin-top: 8px;">Razón Social:</label>
+              <input type="text" id="pos-factura-razon-social" placeholder="Nombre legal de la empresa">
+              <label style="margin-top: 8px;">Giro:</label>
+              <input type="text" id="pos-factura-giro" placeholder="Ej: Venta de alimentos para mascotas">
+              <div class="form-hint">⚠️ La emisión automática de la factura electrónica desde TUU todavía no está disponible (pendiente de acreditación SII). Estos datos quedan guardados junto a la venta para emitirla manualmente mientras tanto.</div>
+            </div>
+
+            <div class="form-group" style="margin-top: 10px;">
               <label>Método de Pago:</label>
               <select id="pos-metodo-pago" onchange="alCambiarMetodoPagoPOS()">
                 <option value="Efectivo">💵 Efectivo</option>
@@ -465,6 +484,56 @@
               </tr>
             </thead>
             <tbody id="desc-tabla-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-conciliacion" class="tab-content hidden">
+      <div class="card">
+        <h3>🧮 Conciliación SII</h3>
+        <p class="form-hint" style="margin-bottom: 15px;">
+          Ventas que aún no tienen enlazado su número de boleta/factura oficial del SII (emitida desde TUU, con tarjeta, efectivo o transferencia). Enlazarlo acá es lo que permite emitir notas de crédito o devoluciones sobre una venta específica más adelante.
+        </p>
+        <div class="form-group" style="max-width: 240px;">
+          <label>Rango a revisar</label>
+          <select id="conciliacion-filtro-dias" onchange="cargarConciliacionSII(this.value)">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+            <option value="0">Todo el historial</option>
+          </select>
+        </div>
+        <div class="kpi-grid" style="margin-top: 15px;">
+          <div class="kpi-card">
+            <div class="kpi-label">Ventas en el rango</div>
+            <div class="kpi-value" id="conciliacion-total-ventas">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Pendientes de conciliar</div>
+            <div class="kpi-value" id="conciliacion-total-pendientes">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>ID Venta</th>
+                <th>Tipo Doc.</th>
+                <th>Total</th>
+                <th>Medio de Pago</th>
+                <th>Cajero</th>
+                <th>N° Documento SII</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="conciliacion-tabla-body">
+              <tr><td colspan="8" style="text-align: center; color: #777;">Cargando...</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -712,6 +781,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- Librería para los gráficos del Dashboard -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
-  <script src="app.js?v=20260807"></script>
+  <script src="app.js?v=20260809"></script>
 </body>
 </html>
