@@ -391,18 +391,64 @@ async function cargarDatosBackend() {
   }
 }
 
-async function enviarFormularioBackend(action, payload) {
+// Acciones que es SEGURO reintentar automáticamente si la petición falla por
+// una razón técnica (tiempo agotado, respuesta mal formada, sin conexión):
+// - Las de lectura ("obtener...") no tienen efectos secundarios, reintentar
+//   nunca duplica nada.
+// - "login" tampoco duplica nada al reintentar (o crea una sesión válida, o falla por PIN incorrecto).
+// - "guardarVenta" es la única acción de ESCRITURA en esta lista porque es la
+//   única que ya tiene protección de idempotencia en el backend (ver
+//   guardarVenta() en codigo.gs). El resto de las acciones que guardan datos
+//   (guardarTutor, guardarCita, etc.) NO están acá a propósito: reintentarlas
+//   solas podría crear registros duplicados. Para esas, el usuario decide
+//   manualmente si reintenta (quedan protegidas igual por el bloqueo de
+//   botón mientras la petición está en curso).
+const ACCIONES_SEGURAS_PARA_REINTENTAR = new Set([
+  'login',
+  'obtenerTodo',
+  'obtenerEstadoCaja',
+  'obtenerRankingVentas',
+  'obtenerDashboard',
+  'obtenerConciliacionSII',
+  'obtenerCatalogoPublico',
+  'obtenerAgendaPublicaDia',
+  'guardarVenta'
+]);
+
+const TIMEOUT_BACKEND_MS = 20000; // 20s: si Apps Script no respondió en ese tiempo, se corta en vez de dejar la pantalla colgada
+
+async function enviarFormularioBackendUnaVez(action, payload) {
   const bodyData = { accion: action, token: sessionToken, ...payload };
-  const res = await fetch(URL_WEB_APP, {
-    method: 'POST',
-    body: JSON.stringify(bodyData)
-  });
+  const controlador = new AbortController();
+  const timeoutId = setTimeout(() => controlador.abort(), TIMEOUT_BACKEND_MS);
+
+  let res;
+  try {
+    res = await fetch(URL_WEB_APP, {
+      method: 'POST',
+      body: JSON.stringify(bodyData),
+      signal: controlador.signal
+    });
+  } catch (e) {
+    clearTimeout(timeoutId);
+    const error = new Error(
+      e.name === 'AbortError'
+        ? 'El servidor demoró demasiado en responder (más de 20 segundos).'
+        : 'No se pudo conectar con el servidor. Revisa tu conexión a internet.'
+    );
+    error.esFallaTecnica = true; // marca para que enviarFormularioBackend() sepa que sí puede reintentar
+    throw error;
+  }
+  clearTimeout(timeoutId);
+
   const texto = await res.text();
   let json;
   try {
     json = JSON.parse(texto);
   } catch (e) {
-    throw new Error("El servidor no respondió correctamente. Revisa el despliegue del script.");
+    const error = new Error("El servidor no respondió correctamente. Revisa el despliegue del script.");
+    error.esFallaTecnica = true;
+    throw error;
   }
 
   if (json.status === "error") {
@@ -410,9 +456,30 @@ async function enviarFormularioBackend(action, payload) {
       alert("⚠️ Tu sesión expiró. Vuelve a iniciar sesión.");
       cerrarSesion();
     }
+    // Error de negocio real (stock insuficiente, PIN incorrecto, etc.): NO se
+    // marca como falla técnica, así que nunca se reintenta solo.
     throw new Error(json.message);
   }
   return json;
+}
+
+async function enviarFormularioBackend(action, payload) {
+  const puedeReintentar = ACCIONES_SEGURAS_PARA_REINTENTAR.has(action);
+  const intentosMaximos = puedeReintentar ? 3 : 1;
+
+  for (let intento = 1; intento <= intentosMaximos; intento++) {
+    try {
+      return await enviarFormularioBackendUnaVez(action, payload);
+    } catch (err) {
+      const esUltimoIntento = intento === intentosMaximos;
+      if (!err.esFallaTecnica || esUltimoIntento) {
+        throw err;
+      }
+      // Espera corta antes de reintentar (1.5s, luego 3s) -- le da tiempo a
+      // que se libere la cola de ejecuciones de Apps Script si esa fue la causa.
+      await new Promise(resolve => setTimeout(resolve, 1500 * intento));
+    }
+  }
 }
 
 function formatearRutChile(rutRaw) {
